@@ -4,4 +4,4 @@ from .models import TextEntry
 class EntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = TextEntry
-        fields = ['id', 'entry_text', 'pub_date']
+        fields = ['id', 'belonging_url', 'entry_text', 'pub_date']

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Login Page</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form method="POST" action="{% url 'social_distribution:loginregister' %}">
+        {% csrf_token %}
+
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username"><br><br>
+
+        <label for="password">Password (insecure):</label>
+        <input type="password" id="password" name="password"><br><br>
+
+        <input type="submit" value="Submit">
+    </form>
+    <p style="color:orange;">{{ message }}</p>
+    <p>Login if the user exists, automatically register if not.</p>
+</body>
+</html>

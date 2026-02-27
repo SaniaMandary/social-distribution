@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>New Entry Page</title>
+</head>
+<body>
+    <h1>New Entry</h1>
+    <form method="POST" action="{% url 'social_distribution:addentry' %}">
+        {% csrf_token %}
+
+        <label for="entry_text">Entry:</label>
+        <input type="entry_text" id="entry_text" name="entry_text"><br><br>
+
+        <a href="../">Back</a>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>

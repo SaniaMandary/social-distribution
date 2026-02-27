@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{author}}'s Page</title>
+</head>
+<body>
+    <section>
+        <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
+        <h1>{{author}}'s Page</h1>
+    </section>
+
+    {% if latest_entry_list %}
+        <ul>
+        {% for entry in latest_entry_list %}
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No entries are available.</p>
+    {% endif %}
+</body>
+</html>
