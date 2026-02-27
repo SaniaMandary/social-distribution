@@ -1,8 +1,9 @@
 from django.urls import path
 from . import views
 
-# urlpatterns contains all of the routes that this application supports routing for.
-# this routes traffic from polls/ to the index function that we defined earlier in the views file.
+app_name = "social_distribution"
 urlpatterns = [
-    path("", views.index, name="index"),
+    path("", views.IndexView.as_view(), name="index"),
+    path("<int:pk>/", views.DetailView.as_view(), name="detail"),
+    path("api/entries/", views.get_entries, name="get_entries"),
 ]
