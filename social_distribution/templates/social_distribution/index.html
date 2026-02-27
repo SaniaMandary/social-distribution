@@ -1,9 +1,30 @@
-{% if latest_entry_list %}
-    <ul>
-    {% for entry in latest_entry_list %}
-        <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a></li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>No entries are available.</p>
-{% endif %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Index Page</title>
+</head>
+<body>
+    <section>
+        <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
+        <h1>Welcome {{author}}</h1>
+        <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
+        <a href="{% url 'social_distribution:newentry' %}">New Entry</a>
+        <a href="{% url 'social_distribution:changeprofile' %}">Edit Profile</a>
+        <form method="POST" action="{% url 'social_distribution:signout' %}">
+            {% csrf_token %}
+            <input type="submit" value="Logout">
+        </form>
+    </section>
+
+    {% if latest_entry_list %}
+        <ul>
+        {% for entry in latest_entry_list %}
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No entries are available.</p>
+    {% endif %}
+</body>
+</html>
