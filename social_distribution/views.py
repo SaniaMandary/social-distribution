@@ -21,7 +21,7 @@ def index(request):
         # authenticated personal page view
         author = Author.objects.get(pk=request.user.username)
 
-        entries = TextEntry.objects.filter(belonging_url=request.user.username).order_by("-pub_date")
+        entries = TextEntry.objects.filter(belonging_url=request.user.username, is_deleted=False).order_by("-pub_date")
 
         entries_dictionary = {
             'latest_entry_list' : entries.values(),
@@ -36,21 +36,18 @@ def index(request):
         return redirect('/social_distribution/login')
 
 def profile_view(request, username):
-    author = Author.objects.get(pk=username)
-    if author:
-        # add required data to render posts
-        entries = TextEntry.objects.filter(belonging_url=username).order_by("-pub_date")
+    author = get_object_or_404(Author, pk=username)
+    # add required data to render posts
+    entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False, visibility='PUBLIC').order_by("-pub_date")
 
-        entries_dictionary = {
-            'latest_entry_list' : entries.values(),
-            'author' : author.name,
-            'picture_url' : author.picture
-            }
+    entries_dictionary = {
+        'latest_entry_list' : entries.values(),
+        'author' : author.name,
+        'picture_url' : author.picture
+        }
 
-        # render the page
-        return render(request, "social_distribution/publicprofile.html", entries_dictionary)
-    else:
-        return HttpResponse("No user exists with that name, that's a 404.")
+    # render the page
+    return render(request, "social_distribution/publicprofile.html", entries_dictionary)
 
 class DetailView(generic.DetailView):
     model = TextEntry
@@ -170,3 +167,22 @@ def get_entries(request):
     entries = TextEntry.objects.all()
     serializer = EntrySerializer(entries, many=True)
     return Response(serializer.data)
+
+@login_required
+@api_view(['POST'])
+def deleteentry(request, entry_id):
+    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
+    entry.is_deleted = True
+    entry.save()
+    return redirect("/social_distribution")
+
+@login_required
+@api_view(['POST'])
+def editentry(request, entry_id):
+    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
+    new_text = request.data.get('entry_text', '').strip()
+    if new_text:
+        entry.entry_text = new_text
+        entry.save()
+        return redirect("/social_distribution")
+    return redirect("/social_distribution/editentry/" + str(entry_id))

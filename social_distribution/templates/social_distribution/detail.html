@@ -1,1 +1,26 @@
-<h1>{{ entry.entry_text }}</h1>   <!-- Display the question's text -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Entry</title>
+</head>
+<body>
+    <h1>{{ entry.entry_text }}</h1>
+    <p>Posted by {{ entry.belonging_url }}</p>
+
+    {% if request.user.username == entry.belonging_url %}
+        <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
+            {% csrf_token %}
+            <input type="text" name="entry_text" placeholder="Edit entry..." value="{{ entry.entry_text }}">
+            <input type="submit" value="Edit">
+        </form>
+
+        <form method="POST" action="{% url 'social_distribution:deleteentry' entry.id %}">
+            {% csrf_token %}
+            <input type="submit" value="Delete">
+        </form>
+    {% endif %}
+
+    <a href="/social_distribution/">Back</a>
+</body>
+</html>
