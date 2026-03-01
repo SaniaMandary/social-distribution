@@ -15,3 +15,8 @@ class TextEntry(models.Model):
     pub_date = models.DateTimeField("date published", default=datetime.now)   # Store the published date in a datetime field in the database
     is_deleted = models.BooleanField(default=False)  # soft delete flag
     visibility = models.CharField(max_length=20, default='PUBLIC')  # PUBLIC, FRIENDS, UNLISTED
+
+class Like(models.Model):
+    liked_object = models.CharField(max_length=200)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
