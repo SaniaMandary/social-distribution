@@ -69,8 +69,8 @@ class DetailView(generic.DetailView):
         entry = context['entry']
 
         #redner markdown if content_type is selected as such 
-        if entry.content_type == 'text/markdwon': 
-            entry.content_rendered = markdown.markdwon(entry.entry_text)
+        if entry.content_type == 'text/markdown': 
+            entry.content_rendered = markdown.markdown(entry.entry_text)
         return context 
 
 def login_view(request):
@@ -183,7 +183,7 @@ def get_entries(request):
     """
     Get the list of entries on our node
     """
-    entries = TextEntry.objects.all()
+    entries = TextEntry.objects.filter(is_deleted=False)
     serializer = EntrySerializer(entries, many=True)
     return Response(serializer.data)
 
@@ -297,7 +297,7 @@ def friends(author1, author2):
             follower=author1,
             following=author2,
             approved=True
-        ).exist()
+        ).exists()
         and
         Follow.objects.filter(
             follower=author2,
