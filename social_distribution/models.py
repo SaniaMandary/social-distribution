@@ -17,6 +17,6 @@ class TextEntry(models.Model):
     visibility = models.CharField(max_length=20, default='PUBLIC')  # PUBLIC, FRIENDS, UNLISTED
 
 class Like(models.Model):
-    liked_object = models.CharField(max_length=200)
+    liked_object = models.CharField(max_length=200) #could be an entry or comment
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
