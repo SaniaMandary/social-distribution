@@ -10,6 +10,7 @@
         <h1>Welcome {{author}}</h1>
         <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
         <a href="{% url 'social_distribution:newentry' %}">New Entry</a>
+        <a href="{% url 'social_distribution:author_list'%}">Authors</a>
         <a href="{% url 'social_distribution:changeprofile' %}">Edit Profile</a>
         <form method="POST" action="{% url 'social_distribution:signout' %}">
             {% csrf_token %}
