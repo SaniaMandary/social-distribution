@@ -1,0 +1,54 @@
+html {
+    margin: 0;
+    font-size: 100%;
+    color: #000000;
+    margin: 25px;
+    font-family: monospace;
+
+    display: flex;
+    margin: 10% auto;
+}
+
+html>body {
+    padding: 10px; 
+    margin: 0 auto;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 80%, rgba(199, 244, 255, 1) 100%);
+    background-repeat: no-repeat;
+    background-attachment: fixed; /** https://stackoverflow.com/questions/34108433/html-css-linear-gradient-not-taking-up-full-screen **/
+}
+
+html>body>nav {
+    border: 1px solid black;
+
+    padding: 15px;
+    display: flex;
+
+    margin: 0 auto;
+    justify-content: center;
+    align-content: center;
+    text-align: center;
+
+    background-color: rgba(199, 244, 255, 1);
+
+    border-radius: 10px;
+}
+html>body>nav>form {
+    display:block;
+    margin: auto 0;
+    padding: 10px;
+}
+html>body>nav>h1 {
+    display:block;
+    margin: auto 0;
+    padding: 10px;
+}
+html>body>nav>a {
+    display:block;
+    margin: auto 0;
+    padding: 10px;
+}
+
+input{
+    margin: 0 1%;
+    border-radius: 5px;
+}

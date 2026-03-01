@@ -1,14 +1,16 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>{{author}}'s Page</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/publicprofile.css' %}">
 </head>
 <body>
-    <section>
+    <nav>
         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
         <h1>{{author}}'s Page</h1>
-    </section>
+    </nav>
 
     {% if not is_own_profile %}
         {% if is_following %}

@@ -1,11 +1,13 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>Index Page</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/index.css' %}">
 </head>
 <body>
-    <section>
+    <nav>
         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
         <h1>Welcome {{author}}</h1>
         <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
@@ -16,7 +18,7 @@
             {% csrf_token %}
             <input type="submit" value="Logout">
         </form>
-    </section>
+    </nav>
 
     {% if latest_entry_list %}
         <ul>
