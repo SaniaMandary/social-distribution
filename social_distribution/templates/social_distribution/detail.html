@@ -1,26 +1,72 @@
-{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>Entry</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/detail.css' %}">
 </head>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".like-button").forEach(button => {
+        button.addEventListener("click", e => {
+            const entryId = button.dataset.entryId;
+
+            fetch(`/social_distribution/api/likes/add/${entryId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log("Like response:", data);
+
+                if (data.success) {
+                    console.log(`Liked ${data.liked_object} by ${data.author}`);
+
+                    const counter = document.getElementById(`likes-count-${entryId}`);
+                    if (counter) {
+                        const current = parseInt(counter.textContent) || 0;
+                        counter.textContent = `${current + 1} likes`;
+                    }
+                }
+            });
+        });
+    });
+});
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== "") {
+        document.cookie.split(";").forEach(cookie => {
+            const [key, value] = cookie.trim().split("=");
+            if (key === name) {
+                cookieValue = decodeURIComponent(value);
+            }
+        });
+    }
+
+    return cookieValue;
+}
+</script>
+
 <body>
     <h1>{{ entry.entry_text }}</h1>
-
-    {% if entry.content_type == 'text/markdown' %}
-     {{ entry.content_rendered|safe }}
-    {% else %}
-        <p>{{ entry.entry_text }}</p>
-    {% endif %}
-
     <p>Posted by {{ entry.belonging_url }}</p>
+
+    <button class="like-button" data-entry-id="{{ entry.id }}">
+        Like
+    </button>
+
+    <p class="likes-count" id="likes-count-{{ entry.id }}">
+        {{ entry.likes_count|default:0 }} likes
+    </p>
 
     {% if request.user.username == entry.belonging_url %}
         <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
             {% csrf_token %}
-            <label for="entry_text">Entry Text:</label>
             <input type="text" name="entry_text" placeholder="Edit entry..." value="{{ entry.entry_text }}">
             <input type="submit" value="Edit">
         </form>

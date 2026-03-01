@@ -234,6 +234,22 @@ def get_likes(request, object_id):
         "src": serializer.data
     })
 
+
+@login_required 
+@api_view(['POST']) 
+def add_like_entry(request, entry_id): 
+    author = Author.objects.get(pk=request.user.username) 
+    liked_object = f"{request.scheme}://{request.get_host()}/social_distribution/entries/{entry_id}" 
+    like = Like.objects.create( 
+        author=author, 
+        object=liked_object 
+    ) 
+    return Response({ 
+        "success": True, 
+        "liked_object": liked_object, 
+        "author": author.url, 
+    })
+
 @login_required
 def follow_requests(request):
     author = Author.objects.get(pk=request.user.username)

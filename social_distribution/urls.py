@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/loginregister/", views.loginregister, name="loginregister"),
     path("api/entries/", views.get_entries, name="get_entries"),
 
+    path("api/likes/add/<int:entry_id>/", views.add_like_entry, name="add_like_entry"),
     path("api/likes/", views.add_like, name="add_like"),
     path("api/likes/<path:object_id>/", views.get_likes, name="get_likes"),
 
