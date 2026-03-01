@@ -1,3 +1,4 @@
+import markdown
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -62,6 +63,15 @@ class DetailView(generic.DetailView):
     model = TextEntry
     context_object_name = "entry"
     template_name = "social_distribution/detail.html"
+
+    def get_context_data(self, **kwargs): 
+        context = super().get_context_data(**kwargs)
+        entry = context['entry']
+
+        #redner markdown if content_type is selected as such 
+        if entry.content_type == 'text/markdwon': 
+            entry.content_rendered = markdown.markdwon(entry.entry_text)
+        return context 
 
 def login_view(request):
     print("Is user authenticated? " + str(request.user.is_authenticated))
