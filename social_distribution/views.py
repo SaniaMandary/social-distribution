@@ -71,6 +71,12 @@ class DetailView(generic.DetailView):
         #redner markdown if content_type is selected as such 
         if entry.content_type == 'text/markdown': 
             entry.content_rendered = markdown.markdown(entry.entry_text)
+
+        user = self.request.user
+        liked_object = f"{self.request.scheme}://{self.request.get_host()}/social_distribution/entries/{entry.id}"
+        context['likes_count'] = Like.objects.filter(object=liked_object).count()
+        context['has_liked'] = Like.objects.filter(author__pk=user.username, object=liked_object).exists()
+
         return context 
 
 def login_view(request):
@@ -235,21 +241,34 @@ def get_likes(request, object_id):
     })
 
 
-@login_required 
-@api_view(['POST']) 
-def add_like_entry(request, entry_id): 
-    author = Author.objects.get(pk=request.user.username) 
-    liked_object = f"{request.scheme}://{request.get_host()}/social_distribution/entries/{entry_id}" 
-    like = Like.objects.create( 
-        author=author, 
-        object=liked_object 
-    ) 
-    return Response({ 
-        "success": True, 
-        "liked_object": liked_object, 
-        "author": author.url, 
-    })
+@login_required
+@api_view(['POST'])
+def add_like_entry(request, entry_id):
+    author = Author.objects.get(pk=request.user.username)
 
+    liked_object = f"{request.scheme}://{request.get_host()}/social_distribution/entries/{entry_id}"
+
+    existing_like = Like.objects.filter(
+        author=author,
+        object=liked_object
+    ).first()
+
+    if existing_like:
+        existing_like.delete()
+        return Response({
+            "success": True,
+            "liked": False,
+        })
+
+    Like.objects.create(
+        author=author,
+        object=liked_object
+    )
+
+    return Response({
+        "success": True,
+        "liked": True,
+    })
 @login_required
 def follow_requests(request):
     author = Author.objects.get(pk=request.user.username)
