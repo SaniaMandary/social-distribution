@@ -8,9 +8,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 
-from .models import TextEntry, Author
+from .models import Like, TextEntry, Author
 from .forms import ChangeProfileForm
-from .serializers import EntrySerializer
+from .serializers import EntrySerializer, LikeSerializer
 
 # VIEWS
 
@@ -186,3 +186,31 @@ def editentry(request, entry_id):
         entry.save()
         return redirect("/social_distribution")
     return redirect("/social_distribution/editentry/" + str(entry_id))
+
+@login_required
+@api_view(['POST'])
+def add_like(request):
+    author = Author.objects.get(pk=request.user.username)
+    liked_object = request.data.get('object', None)
+
+    if not liked_object:
+        return Response({"error": "Missing object field"}, status=400)
+
+    like = Like.objects.create(author=author, object=liked_object)
+    serializer = LikeSerializer(like)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def get_likes(request, object_id):
+    likes = Like.objects.filter(object=object_id).order_by('-published')
+    serializer = LikeSerializer(likes, many=True)
+
+    return Response({
+        "type": "likes",
+        "id": f"{object_id}/likes",
+        "web": f"{object_id}/likes",
+        "page_number": 1,
+        "size": len(serializer.data),
+        "count": len(serializer.data),
+        "src": serializer.data
+    })

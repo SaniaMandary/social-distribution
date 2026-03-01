@@ -29,4 +29,4 @@ class TextEntry(models.Model):
 class Like(models.Model):
     object = models.CharField(max_length=200) #could be an entry or comment
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    published = models.DateTimeField(auto_now_add=True)
