@@ -21,4 +21,11 @@ urlpatterns = [
 
     path("api/likes/", views.add_like, name="add_like"),
     path("api/likes/<path:object_id>/", views.get_likes, name="get_likes"),
+
+    path("follow/<str:username>/", views.follow_author, name="follow_author"),
+    path("unfollow/<str:username>/", views.unfollow, name="unfollow"),
+    path("follow_requests/", views.follow_requests, name="follow_request"),
+    path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
+
+    path("authors/", views.author_list, name="author_list"),
 ]

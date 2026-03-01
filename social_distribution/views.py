@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 
-from .models import Like, TextEntry, Author
+from .models import Like, TextEntry, Author, Follow
 from .forms import ChangeProfileForm
 from .serializers import EntrySerializer, LikeSerializer
 
@@ -37,13 +37,22 @@ def index(request):
 
 def profile_view(request, username):
     author = get_object_or_404(Author, pk=username)
+
+    is_following = Follow.objects.filter(
+        follower = author,
+        approved = True
+    ).values_list("following", flat=True)
+
+    is_own_profile = request.user.username == author.url
     # add required data to render posts
     entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False, visibility='PUBLIC').order_by("-pub_date")
 
     entries_dictionary = {
         'latest_entry_list' : entries.values(),
         'author' : author.name,
-        'picture_url' : author.picture
+        'picture_url' : author.picture,
+        'is_following': is_following,
+        'is_own_profile': is_own_profile
         }
 
     # render the page
@@ -214,3 +223,75 @@ def get_likes(request, object_id):
         "count": len(serializer.data),
         "src": serializer.data
     })
+
+@login_required
+def follow_requests(request):
+    author = Author.objects.get(pk=request.user.username)
+
+    requests = Follow.objects.filter(
+        following =author,
+        approved = False
+    )
+
+    return render(request, "follow_requests.html", {"requests": requests})
+
+@login_required
+def follow_author(request, username):
+    current_author = Author.objects.get(pk=request.user.username)
+    target_author = get_object_or_404(Author, pk=username)
+
+    if current_author != target_author:
+        Follow.objects.get_or_create(
+            follower=current_author,
+            following=target_author,
+            defaults={"approved": False}
+        )
+    return redirect("profile", username=username)
+
+@login_required
+def approve_follow(request, username):
+    current_author = Author.objects.get(pk=request.user.username)
+    follower_author = get_object_or_404(Author, pk=username)
+
+    follow = Follow.objects.get(
+        follower=follower_author,
+        following=current_author
+    )
+
+    follow.approved = True
+    follow.save()
+
+    return redirect("follow_request")
+
+@login_required
+def unfollow(request, username):
+    current_author = Author.objects.get(pk=request.user.username)
+    target_author = get_object_or_404(Author, pk=username)
+
+    Follow.objects.filter(
+        follower=current_author,
+        following =target_author
+    ).delete()
+
+    return redirect("index")
+
+@login_required
+def author_list(request):
+    current_author = Author.objects.get(pk=request.user.username)
+    authors = Author.objects.exclude(url=current_author.url)
+    return render(request, "social_distribution/author_list.html",{"authors": authors})
+
+def friends(author1, author2):
+    return(
+        Follow.objects.filter(
+            follower=author1,
+            following=author2,
+            approved=True
+        ).exist()
+        and
+        Follow.objects.filter(
+            follower=author2,
+            following=author1,
+            approved=True
+        ).exists()
+    )

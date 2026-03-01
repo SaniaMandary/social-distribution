@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>All Authors</title>
+</head>
+
+<body>
+    <h1>All Authors</h1>
+    <ul>
+        {% for author in authors %}
+            <li>
+                <a href="{% url 'social_distribution:profile' author.url %}">{{ author.name}}</a>
+            </li>
+        {% empty %}
+            <li>No authors yet.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

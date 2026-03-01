@@ -10,6 +10,20 @@
         <h1>{{author}}'s Page</h1>
     </section>
 
+    {% if not is_own_profile %}
+        {% if is_following %}
+            <form method="post" action="{% url 'unfollow' username=author.url %}" >
+                {% csrf_token %}
+                <button type="submit">Unfollow</button>
+            </form>
+        {% else %}
+            <form method ="post" action="{% url 'follow_author' username=author.url %}" >
+                {% csrf_token %}
+                <button type="submit">Follow</button>
+            </form>
+        {% endif %}
+    {% endif %}
+
     {% if latest_entry_list %}
         <ul>
         {% for entry in latest_entry_list %}
