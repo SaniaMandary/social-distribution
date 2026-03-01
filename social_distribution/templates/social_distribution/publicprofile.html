@@ -29,9 +29,7 @@
     {% if latest_entry_list %}
         <ul>
         {% for entry in latest_entry_list %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a>
-                <button>Like</button>
-            </li>
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a></li>
         {% endfor %}
         </ul>
     {% else %}
