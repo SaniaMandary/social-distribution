@@ -6,6 +6,13 @@
 </head>
 <body>
     <h1>{{ entry.entry_text }}</h1>
+
+    {% if entry.content_type == 'text/markdown' %}
+     {{ entry.content_rendered|safe }}
+    {% else %}
+        <p>{{ entry.entry_text }}</p>
+    {% endif %}
+
     <p>Posted by {{ entry.belonging_url }}</p>
 
     {% if request.user.username == entry.belonging_url %}
