@@ -30,3 +30,15 @@ class Like(models.Model):
     object = models.CharField(max_length=200) #could be an entry or comment
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     published = models.DateTimeField(auto_now_add=True)
+
+class Follow(models.Model):
+    follower = models.ForeignKey(
+        Author,
+        on_delete=models.CASCADE,
+        related_name="following"
+    )
+    following = models.ForeignKey(
+        Author,
+        on_delete=models.CASCADE,
+        related_name="followers"
+    )
