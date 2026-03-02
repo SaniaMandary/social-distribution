@@ -102,8 +102,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </script>
 <body>
-    <h1>{{ entry.entry_text }}</h1>
-    <p>Posted by {{ entry.belonging_url }}</p>
+    <!---Are we dealing with a markdown entry? -->  
+   {% if entry.content_type == 'text/markdown' %}
+    <h1>{{ entry.content_rendered|safe }}</h1>
+    {% else %}
+        <h1>{{ entry.entry_text }}</h1>
+    {% endif %}
+
+ <!---same thing down here.  -->  
+    {% if entry.content_type == 'text/markdown' %}
+     {{ entry.content_rendered|safe }}
+    {% else %}
+         <p>{{ entry.entry_text }}</p>
+    {% endif %}
+
+    <p>Posted by: {{ entry.belonging_url }}</p>
 
     <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ has_liked|yesno:'true,false' }}">
     {% if has_liked %}
@@ -137,11 +150,26 @@ document.addEventListener("DOMContentLoaded", () => {
     </form>
     {% endif %}
 
+    <p>Posted by: {{ entry.belonging_url }}</p>
+
     {% if request.user.username == entry.belonging_url %}
         <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
             {% csrf_token %}
-            <input type="text" name="entry_text" placeholder="Edit entry..." value="{{ entry.entry_text }}">
-            <input type="submit" value="Edit">
+            <label for="entry_text">Edit entry:</label><br>
+            <textarea id="edit_entry_text" name="entry_text" rows="4" cols="50">{{ entry.entry_text }}</textarea><br><br>
+            <label for="content_type">Content Type:</label><br>
+            <select id="edit_content_type" name="content_type">
+                <option value="text/plain" {% if entry.content_type == 'text/plain' %}selected{% endif %}>Plain Text</option>
+                <option value="text/markdown" {% if entry.content_type == 'text/markdown' %}selected{% endif %}>CommonMark (Markdown)</option>
+            </select><br><br>
+
+            <section id="edit-markdown-section" style="display:none;">
+                <button id="edit-convert-btn">Preview Markdown</button>
+                <h3>Output</h3>
+                <p id="edit-markdown-output"></p>
+            </section>
+
+            <input type="submit" value="Save Changes">
         </form>
 
         <form method="POST" action="{% url 'social_distribution:deleteentry' entry.id %}">
@@ -151,5 +179,13 @@ document.addEventListener("DOMContentLoaded", () => {
     {% endif %}
 
     <a href="/social_distribution/">Back</a>
+
+    <script src="{% static 'markdown-editor.min.js' %}"></script>
+    <script> 
+        document.addEventListener('DOMContentLoaded', function() { 
+            initMarkdownEditor('edit_content_type', 'edit_entry_text',
+             'edit-markdown-section', 'edit-convert-btn', 'edit-markdown-output');
+        }); 
+    </script>
 </body>
 </html>

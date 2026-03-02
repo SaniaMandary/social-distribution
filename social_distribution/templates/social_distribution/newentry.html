@@ -11,11 +11,25 @@
     <form method="POST" action="{% url 'social_distribution:addentry' %}">
         {% csrf_token %}
 
-        <label for="entry_text">Entry:</label>
-        <input type="entry_text" id="entry_text" name="entry_text"><br><br>
+         <label for="content_type">Content Type:</label><br>
+        {{ form.content_type }}<br><br>
+        
+        <label for="visibility">Visibility:</label><br>
+        {{ form.visibility }}<br><br>
+
+        <label for="entry_text">Entry:</label><br>
+         {{ form.entry_text }}<br><br>
+
+        <section id="markdown-section" style="display:none;"> 
+            <button id="switch-btn">Preview Markdown</button>
+            <h3>Output</h3>
+            <p id="markdown-output"></p>
+        </section>
 
         <a href="../">Back</a>
         <input type="submit" value="Submit">
     </form>
+
+    <script src="{% static 'markdown-editor.min.js' %}"></script>
 </body>
 </html>

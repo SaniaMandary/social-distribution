@@ -65,6 +65,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'django.template.context_processors.static',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
@@ -132,4 +133,5 @@ USE_TZ = True
 
 STATIC_ROOT = BASE_DIR / "staticfiles" 
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "social_distribution" / "static"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

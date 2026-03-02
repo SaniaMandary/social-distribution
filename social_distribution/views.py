@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-
+from .forms import TextEntryForm
 from .models import Like, TextEntry, Author, Follow, Comment
 from .forms import ChangeProfileForm
 from .serializers import EntrySerializer, LikeSerializer, CommentSerializer
@@ -99,7 +99,8 @@ def login_view(request):
 
 @login_required(login_url='/social_distribution/login')
 def newentry_view(request):
-    return render(request, "social_distribution/newentry.html")
+    form = TextEntryForm()
+    return render(request, "social_distribution/newentry.html", {'form': form})
 
 @login_required(login_url='/social_distribution/login')
 def changeprofile_view(request):
@@ -183,6 +184,7 @@ def addentry(request):
     # add additional data before serialization
     mutable_request_data = request.data.copy()
     mutable_request_data['belonging_url'] = author.url
+    mutable_request_data['content_type'] = request.data.get('content_type', 'text/plain')
     serializer = EntrySerializer(data=mutable_request_data)
 
     # success
@@ -215,8 +217,11 @@ def deleteentry(request, entry_id):
 def editentry(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
     new_text = request.data.get('entry_text', '').strip()
+    new_content_type = request.data.get('content_type', '').strip()
     if new_text:
         entry.entry_text = new_text
+        if new_content_type in ['text/plain', 'text/markdown']: 
+            entry.content_type = new_content_type
         entry.save()
         return redirect("/social_distribution")
     return redirect("/social_distribution/editentry/" + str(entry_id))
