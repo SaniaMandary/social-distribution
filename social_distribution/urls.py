@@ -31,5 +31,5 @@ urlpatterns = [
     path("authors/", views.author_list, name="author_list"),
 
     path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
-    path("api/entries/<int:entry_id>/comments/add/", views.add_comment, name="add_comment"),
+    path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
 ]

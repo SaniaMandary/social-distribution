@@ -51,6 +51,33 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+document.getElementById('comment-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    const text = document.getElementById('comment-text').value;
+    fetch(`/social_distribution/api/entries/{{ entry.id }}/comments/post/`, {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie('csrftoken'),
+        },
+        body: JSON.stringify({
+            comment: text,
+            contentType: "text/markdown"
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Posted comment:", data);
+        // optionally append the comment to the list without reload
+        const ul = document.getElementById('comments-list');
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>${data.author.displayName}</strong> (${new Date(data.published).toLocaleString()}): ${data.comment}`;
+        ul.prepend(li);
+        document.getElementById('comment-text').value = '';
+    });
+});
+
 </script>
 <body>
     <h1>{{ entry.entry_text }}</h1>
@@ -67,6 +94,26 @@ function getCookie(name) {
     <p class="likes-count" id="likes-count-{{ entry.id }}">
         {{ entry.likes_count|default:0 }} likes
     </p>
+
+    <h2>Comments</h2>
+    <ul id="comments-list">
+        {% for comment in entry.comments.all %}
+            <li>
+                <strong>{{ comment.author.username }}</strong> ({{ comment.created_at|date:"M d, Y H:i" }}):
+                {{ comment.content }}
+            </li>
+        {% empty %}
+            <li>No comments yet.</li>
+        {% endfor %}
+    </ul>
+
+    {% if request.user.is_authenticated %}
+    <form id="comment-form">
+        <textarea id="comment-text" placeholder="Add a comment..." required></textarea>
+        <br>
+        <input type="submit" value="Post Comment">
+    </form>
+    {% endif %}
 
     {% if request.user.username == entry.belonging_url %}
         <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
