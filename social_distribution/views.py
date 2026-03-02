@@ -39,13 +39,14 @@ def index(request):
 
 def profile_view(request, username):
     author = get_object_or_404(Author, pk=username)
+    current_author = Author.objects.get(pk=request.user.username)
 
     is_following = Follow.objects.filter(
-        follower = author,
-        approved = True
-    ).values_list("following", flat=True)
+        follower = current_author,
+        following=author,
+    ).exists()
 
-    is_own_profile = request.user.username == author.url
+    is_own_profile = current_author == author.url
     # add required data to render posts
     entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False, visibility='PUBLIC').order_by("-pub_date")
 
@@ -321,7 +322,7 @@ def approve_follow(request, username):
     follow.approved = True
     follow.save()
 
-    return redirect("social_distribution:follow_request")
+    return redirect("social_distribution:follow_requests")
 
 @login_required
 def reject_follow(request, username):
@@ -334,7 +335,7 @@ def reject_follow(request, username):
         approved=False
     ).delete()
 
-    return redirect("social_distribution:follow_request")
+    return redirect("social_distribution:follow_requests")
 
 @login_required
 def unfollow(request, username):
@@ -346,7 +347,7 @@ def unfollow(request, username):
         following =target_author
     ).delete()
 
-    return redirect("index")
+    return redirect("social_distribution:index")
 
 @login_required
 def author_list(request):
