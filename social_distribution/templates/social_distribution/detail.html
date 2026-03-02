@@ -20,14 +20,44 @@ function getCookie(name) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Like button handler
+    // Like button handler for entries
     document.querySelectorAll(".like-button").forEach(button => {
         button.addEventListener("click", () => {
             const entryId = button.dataset.entryId;
-            const liked = button.dataset.liked === "true";
             const counter = document.getElementById(`likes-count-${entryId}`);
 
             fetch(`/social_distribution/api/likes/add/${entryId}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) return;
+
+                const current = parseInt(counter.textContent) || 0;
+
+                if (data.liked) {
+                    button.textContent = "Unlike";
+                    button.dataset.liked = "true";
+                    counter.textContent = `${current + 1} likes`;
+                } else {
+                    button.textContent = "Like";
+                    button.dataset.liked = "false";
+                    counter.textContent = `${current - 1} likes`;
+                }
+            });
+        });
+    });
+
+    // Like button handler for comments
+    document.querySelectorAll(".comment-like-button").forEach(button => {
+        button.addEventListener("click", () => {
+            const commentId = button.dataset.commentId;
+            const counter = document.getElementById(`comment-likes-count-${commentId}`);
+
+            fetch(`/social_distribution/api/comments/${commentId}/likes/`, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),
@@ -91,9 +121,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 const li = document.createElement('li');
                 const authorName = data.author.displayName || data.author.name || 'Unknown';
                 const publishedDate = new Date(data.published).toLocaleString();
+                // build list item with like button and count
                 li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.content}`;
+                // only authenticated users can post, so show like button
+                li.innerHTML += `<br><button class="comment-like-button" data-comment-id="${data.comment_id}" data-liked="false">Like</button> ` +
+                              `<span class="comment-likes-count" id="comment-likes-count-${data.comment_id}">0 likes</span>`;
                 ul.prepend(li);
                 document.getElementById('comment-text').value = '';
+
+                const newBtn = li.querySelector('.comment-like-button');
+                if (newBtn) {
+                    newBtn.addEventListener('click', () => {
+                        const commentId = newBtn.dataset.commentId;
+                        const counter = document.getElementById(`comment-likes-count-${commentId}`);
+                        fetch(`/social_distribution/api/comments/${commentId}/likes/`, {
+                            method: "POST",
+                            headers: {"X-CSRFToken": getCookie("csrftoken")},
+                        })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (!d.success) return;
+                            const current = parseInt(counter.textContent) || 0;
+                            if (d.liked) {
+                                newBtn.textContent = "Unlike";
+                                newBtn.dataset.liked = "true";
+                                counter.textContent = `${current + 1} likes`;
+                            } else {
+                                newBtn.textContent = "Like";
+                                newBtn.dataset.liked = "false";
+                                counter.textContent = `${current - 1} likes`;
+                            }
+                        });
+                    });
+                }
             })
             .catch(err => console.error("Error posting comment:", err));
         });
@@ -136,6 +196,13 @@ document.addEventListener("DOMContentLoaded", () => {
             <li>
                 <strong>{{ comment.author.name }}</strong> ({{ comment.created_at|date:"M d, Y H:i" }}):
                 {{ comment.content }}
+                {% if request.user.is_authenticated %}
+                <br>
+                <button class="comment-like-button" data-comment-id="{{ comment.id }}" data-liked="{{ comment.user_liked|yesno:'true,false' }}">
+                    {% if comment.user_liked %}Unlike{% else %}Like{% endif %}
+                </button>
+                <span class="comment-likes-count" id="comment-likes-count-{{ comment.id }}">{{ comment.likes_count|default:0 }} likes</span>
+                {% endif %}
             </li>
         {% empty %}
             <li>No comments yet.</li>

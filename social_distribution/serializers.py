@@ -32,12 +32,13 @@ class LikeSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
+    comment_id = serializers.IntegerField(source='id', read_only=True)
     author = serializers.SerializerMethodField()
     published = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['type', 'author', 'content', 'content_type', 'published', 'id', 'entry']
+        fields = ['type', 'author', 'content', 'content_type', 'published', 'id', 'comment_id', 'entry']
 
     def get_type(self, obj):
         return "comment"
