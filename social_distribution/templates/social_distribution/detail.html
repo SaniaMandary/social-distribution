@@ -72,10 +72,13 @@ document.getElementById('comment-form').addEventListener('submit', function(e){
         // optionally append the comment to the list without reload
         const ul = document.getElementById('comments-list');
         const li = document.createElement('li');
-        li.innerHTML = `<strong>${data.author.displayName}</strong> (${new Date(data.published).toLocaleString()}): ${data.comment}`;
+        const authorName = data.author.displayName || data.author.name || 'Unknown';
+        const publishedDate = new Date(data.published).toLocaleString();
+        li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.content}`;
         ul.prepend(li);
         document.getElementById('comment-text').value = '';
-    });
+    })
+    .catch(err => console.error("Error posting comment:", err));
 });
 
 </script>
@@ -83,8 +86,8 @@ document.getElementById('comment-form').addEventListener('submit', function(e){
     <h1>{{ entry.entry_text }}</h1>
     <p>Posted by {{ entry.belonging_url }}</p>
 
-    <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ entry.user_liked|yesno:'true,false' }}">
-    {% if entry.user_liked %}
+    <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ has_liked|yesno:'true,false' }}">
+    {% if has_liked %}
         Unlike
     {% else %}
         Like
@@ -92,14 +95,14 @@ document.getElementById('comment-form').addEventListener('submit', function(e){
     </button>
 
     <p class="likes-count" id="likes-count-{{ entry.id }}">
-        {{ entry.likes_count|default:0 }} likes
+        {{ likes_count|default:0 }} likes
     </p>
 
     <h2>Comments</h2>
     <ul id="comments-list">
-        {% for comment in entry.comments.all %}
+        {% for comment in comments %}
             <li>
-                <strong>{{ comment.author.username }}</strong> ({{ comment.created_at|date:"M d, Y H:i" }}):
+                <strong>{{ comment.author.name }}</strong> ({{ comment.created_at|date:"M d, Y H:i" }}):
                 {{ comment.content }}
             </li>
         {% empty %}

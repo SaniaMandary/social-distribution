@@ -33,15 +33,25 @@ class CommentSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
     author = serializers.SerializerMethodField()
+    published = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['type', 'author', 'comment', 'content_type', 'published', 'id', 'entry']
+        fields = ['type', 'author', 'content', 'content_type', 'published', 'id', 'entry']
 
     def get_type(self, obj):
         return "comment"
 
     def get_id(self, obj):
         return f"{obj.author.url}/commented/{obj.id}"
+    
+    def get_author(self, obj):
+        return {
+            "displayName": obj.author.name,
+            "url": obj.author.url
+        }
+    
+    def get_published(self, obj):
+        return obj.created_at.isoformat()
 
     

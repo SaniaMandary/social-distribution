@@ -1,5 +1,4 @@
-from datetime import timezone
-
+from django.utils import timezone
 import markdown
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -77,7 +76,15 @@ class DetailView(generic.DetailView):
         user = self.request.user
         liked_object = f"{self.request.scheme}://{self.request.get_host()}/social_distribution/entries/{entry.id}"
         context['likes_count'] = Like.objects.filter(object=liked_object).count()
-        context['has_liked'] = Like.objects.filter(author__pk=user.username, object=liked_object).exists()
+        
+        # Check if user has liked this entry
+        if user.is_authenticated:
+            context['has_liked'] = Like.objects.filter(author__pk=user.username, object=liked_object).exists()
+        else:
+            context['has_liked'] = False
+        
+        # Get all comments for this entry
+        context['comments'] = Comment.objects.filter(entry=entry).order_by('-created_at')
 
         return context 
 
@@ -345,7 +352,7 @@ def friends(author1, author2):
 
 @api_view(['GET'])
 def get_comments(request, entry_id):
-    comments = Comment.objects.filter(entry__id=entry_id).order_by('-published')
+    comments = Comment.objects.filter(entry__id=entry_id).order_by('-created_at')
     serializer = CommentSerializer(comments, many=True)
 
     return Response({
@@ -363,16 +370,16 @@ def get_comments(request, entry_id):
 @api_view(['POST'])
 def post_entry_comment(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id)
+    author = Author.objects.get(pk=request.user.username)
     content = request.data.get("comment", "").strip()
     if not content:
         return Response({"error": "Missing comment content"}, status=400)
 
     comment = Comment.objects.create(
-        author=request.user,
+        author=author,
         entry=entry,
         content=content,
-        content_type=request.data.get("contentType", "text/markdown"),
-        created_at=timezone.now()
+        content_type=request.data.get("contentType", "text/markdown")
     )
     serializer = CommentSerializer(comment, context={'request': request})
     return Response(serializer.data, status=201)
