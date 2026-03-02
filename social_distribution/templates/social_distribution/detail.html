@@ -6,6 +6,7 @@
     <title>Entry</title>
     <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/detail.css' %}">
 </head>
+<body>
 
 <script>
 function getCookie(name) {
@@ -161,22 +162,29 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 </script>
-<body>
+
+  <header>
     <!---Are we dealing with a markdown entry? -->  
    {% if entry.content_type == 'text/markdown' %}
     <h1>{{ entry.content_rendered|safe }}</h1>
     {% else %}
         <h1>{{ entry.entry_text }}</h1>
     {% endif %}
+    <p>Posted by: {{ entry.belonging_url }}</p>
+    <br>
+    <p>Date: {{ entry.pub_date }}</p>
+  </header>
 
- <!---same thing down here.  -->  
+  <hr>
+
+  <section>
+     <!---same thing down here.  -->  
     {% if entry.content_type == 'text/markdown' %}
      {{ entry.content_rendered|safe }}
     {% else %}
          <p>{{ entry.entry_text }}</p>
     {% endif %}
-
-    <p>Posted by: {{ entry.belonging_url }}</p>
+  
 
     <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ has_liked|yesno:'true,false' }}">
     {% if has_liked %}
@@ -189,7 +197,11 @@ document.addEventListener("DOMContentLoaded", () => {
     <p class="likes-count" id="likes-count-{{ entry.id }}">
         {{ likes_count|default:0 }} likes
     </p>
+  </section>
 
+  <hr> 
+
+  <section>
     <h2>Comments</h2>
     <ul id="comments-list">
         {% for comment in comments %}
@@ -216,10 +228,12 @@ document.addEventListener("DOMContentLoaded", () => {
         <input type="submit" value="Post Comment">
     </form>
     {% endif %}
+    </section>
 
-    <p>Posted by: {{ entry.belonging_url }}</p>
+    <hr>
 
     {% if request.user.username == entry.belonging_url %}
+    <section> 
         <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
             {% csrf_token %}
             <label for="entry_text">Edit entry:</label><br>
@@ -243,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
             {% csrf_token %}
             <input type="submit" value="Delete">
         </form>
+    </section>
     {% endif %}
 
     <a href="/social_distribution/">Back</a>

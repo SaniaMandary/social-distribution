@@ -1,12 +1,18 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
 html {
     margin: 0;
     font-size: 100%;
-    color: #000000;
-    margin: 25px;
+    color: #1a1a1a;
     font-family: monospace;
-
-    display: flex;
-    margin: 10% auto;
+    background: linear-gradient(180deg, #ffffff 0%, #ffffff 80%, #c7f4ff 100%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
 }
 
 html>body {
@@ -25,7 +31,157 @@ html>body>form {
     padding: 10px 0;
 }
 
+
+header {
+    border-bottom: 2px solid #000;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 24px 0;
+}
+
+
+section {
+    margin-bottom: 32px;
+}
+
+
+h2 {
+    font-size: 1.2rem;
+    margin-bottom: 14px;
+}
+
+
+
 input{
     margin: 0 1%;
     border-radius: 5px;
+}
+
+
+
+
+form + form input[type="submit"] {
+    background: #c0392b;
+    margin-top: 10px;
+}
+
+
+a {
+    display: inline-block;
+    margin-top: 20px;
+    color: #000;
+    font-size: 0.88rem;
+    text-decoration: underline;
+}
+
+
+.like-button,
+.comment-like-button {
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-top: 10px;
+}
+
+.like-button:hover,
+.comment-like-button:hover {
+    background: #333;
+}
+
+.likes-count,
+.comment-likes-count {
+    font-size: 0.82rem;
+    color: #555;
+    margin-left: 6px;
+}
+
+
+#comments-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+#comments-list li {
+    background: #f5f5f5;
+    border-left: 3px solid #000;
+    padding: 10px 14px;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+#comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 500px;
+}
+
+#comment-text {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+}
+
+#edit_entry_text {
+    width: 100%;
+    max-width: 500px;
+    padding: 8px 10px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+select {
+    padding: 5px 8px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.88rem;
+    margin-top: 4px;
+}
+
+
+
+
+#edit-convert-btn {
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+
+#edit-markdown-section {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 10px;
+    max-width: 500px;
 }
