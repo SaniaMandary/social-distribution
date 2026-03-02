@@ -8,7 +8,19 @@
 </head>
 
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        document.cookie.split(";").forEach(cookie => {
+            const [key, value] = cookie.trim().split("=");
+            if (key === name) cookieValue = decodeURIComponent(value);
+        });
+    }
+    return cookieValue;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    // Like button handler
     document.querySelectorAll(".like-button").forEach(button => {
         button.addEventListener("click", () => {
             const entryId = button.dataset.entryId;
@@ -39,46 +51,53 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     });
-});
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== "") {
-        document.cookie.split(";").forEach(cookie => {
-            const [key, value] = cookie.trim().split("=");
-            if (key === name) cookieValue = decodeURIComponent(value);
+    // Comment form handler
+    const commentForm = document.getElementById('comment-form');
+    if (commentForm) {
+        commentForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const text = document.getElementById('comment-text').value;
+            if (!text.trim()) return;
+            
+            fetch(`/social_distribution/api/entries/{{ entry.id }}/comments/add/`, {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    comment: text,
+                    contentType: "text/markdown"
+                })
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(data => { throw data; });
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Posted comment:", data);
+                // Append the comment to the list
+                const ul = document.getElementById('comments-list');
+                
+                // Remove "No comments yet" message if present
+                const emptyMsg = ul.querySelector('li');
+                if (emptyMsg && emptyMsg.textContent === 'No comments yet.') {
+                    ul.innerHTML = '';
+                }
+                
+                const li = document.createElement('li');
+                const authorName = data.author.displayName || data.author.name || 'Unknown';
+                const publishedDate = new Date(data.published).toLocaleString();
+                li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.content}`;
+                ul.prepend(li);
+                document.getElementById('comment-text').value = '';
+            })
+            .catch(err => console.error("Error posting comment:", err));
         });
     }
-    return cookieValue;
-}
-
-document.getElementById('comment-form').addEventListener('submit', function(e){
-    e.preventDefault();
-    const text = document.getElementById('comment-text').value;
-    fetch(`/social_distribution/api/entries/{{ entry.id }}/comments/post/`, {
-        method: 'POST',
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCookie('csrftoken'),
-        },
-        body: JSON.stringify({
-            comment: text,
-            contentType: "text/markdown"
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log("Posted comment:", data);
-        // optionally append the comment to the list without reload
-        const ul = document.getElementById('comments-list');
-        const li = document.createElement('li');
-        const authorName = data.author.displayName || data.author.name || 'Unknown';
-        const publishedDate = new Date(data.published).toLocaleString();
-        li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.content}`;
-        ul.prepend(li);
-        document.getElementById('comment-text').value = '';
-    })
-    .catch(err => console.error("Error posting comment:", err));
 });
 
 </script>
