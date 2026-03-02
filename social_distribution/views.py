@@ -86,7 +86,22 @@ class DetailView(generic.DetailView):
             context['has_liked'] = False
         
         # Get all comments for this entry
-        context['comments'] = Comment.objects.filter(entry=entry).order_by('-created_at')
+        comments = Comment.objects.filter(entry=entry).order_by('-created_at')
+        # annotate like counts and whether current user liked each comment
+        comment_list = []
+        for comment in comments:
+            comment.likes_count = Like.objects.filter(
+                object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.id}"
+            ).count()
+            if user.is_authenticated:
+                comment.user_liked = Like.objects.filter(
+                    author__pk=user.username,
+                    object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.id}"
+                ).exists()
+            else:
+                comment.user_liked = False
+            comment_list.append(comment)
+        context['comments'] = comment_list
 
         return context 
 
@@ -281,6 +296,33 @@ def add_like_entry(request, entry_id):
         object=liked_object
     )
 
+    return Response({
+        "success": True,
+        "liked": True,
+    })
+
+@login_required
+@api_view(['POST'])
+def add_like_comment(request, comment_id):
+    author = Author.objects.get(pk=request.user.username)
+    liked_object = f"{request.scheme}://{request.get_host()}/social_distribution/comments/{comment_id}"
+
+    existing_like = Like.objects.filter(
+        author=author,
+        object=liked_object
+    ).first()
+
+    if existing_like:
+        existing_like.delete()
+        return Response({
+            "success": True,
+            "liked": False,
+        })
+
+    Like.objects.create(
+        author=author,
+        object=liked_object
+    )
     return Response({
         "success": True,
         "liked": True,

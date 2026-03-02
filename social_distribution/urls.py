@@ -32,6 +32,7 @@ urlpatterns = [
 
     path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
     path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
+    path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"),
 
     path("reject_follow/<str:username>/", views.reject_follow, name="reject_follow"),
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
