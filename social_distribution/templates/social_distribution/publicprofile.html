@@ -14,12 +14,12 @@
 
     {% if not is_own_profile %}
         {% if is_following %}
-            <form method="post" action="{% url 'unfollow' username=author.url %}" >
+            <form method="post" action="{% url 'social_distribution:unfollow' username=author_username %}">
                 {% csrf_token %}
                 <button type="submit">Unfollow</button>
             </form>
         {% else %}
-            <form method ="post" action="{% url 'follow_author' username=author.url %}" >
+           <form method="post" action="{% url 'social_distribution:follow_author' username=author_username %}">
                 {% csrf_token %}
                 <button type="submit">Follow</button>
             </form>

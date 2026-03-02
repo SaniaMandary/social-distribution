@@ -52,6 +52,7 @@ def profile_view(request, username):
     entries_dictionary = {
         'latest_entry_list' : entries.values(),
         'author' : author.name,
+        'author_username': author.url,
         'picture_url' : author.picture,
         'is_following': is_following,
         'is_own_profile': is_own_profile
