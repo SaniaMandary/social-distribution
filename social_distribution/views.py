@@ -293,7 +293,7 @@ def follow_requests(request):
         approved = False
     )
 
-    return render(request, "follow_requests.html", {"requests": requests})
+    return render(request, "social_distribution/follow_requests.html", {"requests": requests})
 
 @login_required
 def follow_author(request, username):
@@ -306,7 +306,7 @@ def follow_author(request, username):
             following=target_author,
             defaults={"approved": False}
         )
-    return redirect("profile", username=username)
+    return redirect("social_distribution:profile", username=username)
 
 @login_required
 def approve_follow(request, username):
@@ -321,7 +321,20 @@ def approve_follow(request, username):
     follow.approved = True
     follow.save()
 
-    return redirect("follow_request")
+    return redirect("social_distribution:follow_request")
+
+@login_required
+def reject_follow(request, username):
+    current_author = Author.objects.get(pk=request.user.username)
+    follower_author = get_object_or_404(Author, pk=username)
+
+    Follow.objects.filter(
+        follower=follower_author,
+        following=current_author,
+        approved=False
+    ).delete()
+
+    return redirect("social_distribution:follow_request")
 
 @login_required
 def unfollow(request, username):

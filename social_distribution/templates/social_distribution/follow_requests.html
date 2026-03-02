@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Follow Requests</title>
+</head>
+<body>
+    <h1>Follow Requests</h1>
+
+    {% if requests %}
+        <ul>
+            {% for req in requests %}
+            <li>
+                {{ req.follower.name }} wants to follow you
+                <form method="post" action="{% url 'social_distribution:approve_follow' username=req.follower.url %}">
+                    {% csrf_token %}
+                    <button type="submit">Accept</button>
+                </form>
+                <form method="post" action="{% url 'social_distribution:reject_follow' username=req.follower.url %}">
+                    {% csrf_token %}
+                    <button type="submit">Reject</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No pending follow requests.</p>
+    {% endif %}
+</body>
+</html>

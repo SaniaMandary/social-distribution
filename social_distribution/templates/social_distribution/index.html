@@ -14,6 +14,7 @@
         <a href="{% url 'social_distribution:newentry' %}">New Entry</a>
         <a href="{% url 'social_distribution:author_list'%}">Authors</a>
         <a href="{% url 'social_distribution:changeprofile' %}">Edit Profile</a>
+        <a href="{% url 'social_distribution:follow_requests' %}">Follow Requests</a>
         <form method="POST" action="{% url 'social_distribution:signout' %}">
             {% csrf_token %}
             <input type="submit" value="Logout">

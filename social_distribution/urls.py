@@ -25,11 +25,14 @@ urlpatterns = [
 
     path("follow/<str:username>/", views.follow_author, name="follow_author"),
     path("unfollow/<str:username>/", views.unfollow, name="unfollow"),
-    path("follow_requests/", views.follow_requests, name="follow_request"),
+    path("follow_requests/", views.follow_requests, name="follow_requests"),
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
 
     path("authors/", views.author_list, name="author_list"),
 
     path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
     path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
+
+    path("reject_follow/<str:username>/", views.reject_follow, name="reject_follow"),
+    path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
 ]
