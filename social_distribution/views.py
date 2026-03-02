@@ -445,9 +445,9 @@ def friends(author1, author2):
 @login_required
 def friends_list(request):
     current_author = Author.objects.get(pk=request.user.username)
+    all_authors = Author.objects.exclude(url=current_author.url)
     all_friends = []
 
-    all_authors = Author.objects.exclude(url=current_author.url)
     for i in all_authors:
         if friends(current_author, i):
             all_friends.append(i)
