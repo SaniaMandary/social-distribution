@@ -397,6 +397,17 @@ def author_list(request):
     authors = Author.objects.exclude(url=current_author.url)
     return render(request, "social_distribution/author_list.html",{"authors": authors})
 
+@login_required
+def followers_list(request):
+    current_author = Author.objects.get(pk=request.user.username)
+
+    followers = Follow.objects.filter(
+        following=current_author,
+        approved=True
+    ).select_related('follower')
+
+    return render(request, "social_distribution/followers_list.html", {"followers": followers, "author": current_author})
+
 def friends(author1, author2):
     return(
         Follow.objects.filter(
