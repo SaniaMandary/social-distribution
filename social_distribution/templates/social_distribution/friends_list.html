@@ -2,23 +2,22 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Follower Lists</title>
+    <title>Friends list</title>
 </head>
 <body>
-    <h1>{{ author.name }}'s Followers</h1>
+    <h1>Friends List</h1>
 
-    {% if followers %}
+    {% if friends %}
         <ul>
-            {% for follow in followers %}
+            {% for friend in friends %}
                 <li>
-                    {{ follow.follower.name }}
+                    {{ friend.friends.name }}
                 </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>You have no followers.</p>
+        <p>You have no friends.</p>
     {% endif %}
     <a href="{% url 'social_distribution:index' %}">Back to Home</a>
 </body>
 </html>
-

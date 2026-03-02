@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.views import generic
+from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth import authenticate, login, logout
@@ -39,14 +40,32 @@ def index(request):
 
 def profile_view(request, username):
     author = get_object_or_404(Author, pk=username)
-    current_author = Author.objects.get(pk=request.user.username)
 
-    is_following = Follow.objects.filter(
-        follower = current_author,
-        following=author,
-    ).exists()
+    if request.user.is_authenticated:
+        current_author = Author.objects.get(pk=request.user.username)
 
-    is_own_profile = current_author == author.url
+    is_own_profile = current_author == author if current_author else False
+
+    entry_filter = Q(visibility='PUBLIC')
+
+    if current_author and not is_own_profile:
+        if friends(current_author, author):
+            entry_filter |= Q(visibility='FRIENDS')
+    
+    entries = TextEntry.objects.filter(
+        belonging_url=username,
+        is_deleted=False,
+    ).filter(entry_filter).order_by("-pub_date")
+
+    is_following = False
+    if current_author and not is_own_profile:
+        is_following = Follow.objects.filter(
+            follower = current_author,
+            following=author,
+            approved=True
+        ).exists()
+
+    
     # add required data to render posts
     entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False, visibility='PUBLIC').order_by("-pub_date")
 
@@ -422,6 +441,21 @@ def friends(author1, author2):
             approved=True
         ).exists()
     )
+
+@login_required
+def friends_list(request):
+    current_author = Author.objects.get(pk=request.user.username)
+    all_friends = []
+
+    all_authors = Author.objects.exclude(url=current_author.url)
+    for i in all_authors:
+        if friends(current_author, i):
+            all_friends.append(i)
+    context = {
+        "friends_list": all_friends
+    }
+
+    return render(request, "social_distribution/friends_list.html", context)
 
 @api_view(['GET'])
 def get_comments(request, entry_id):
