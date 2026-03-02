@@ -1,7 +1,7 @@
 from webbrowser import get
 
 from rest_framework import serializers
-from .models import Like, TextEntry
+from .models import Like, TextEntry, Comment
 
 class EntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,3 +28,20 @@ class LikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Like
         fields = ['type', 'author', 'published', 'id', 'object']
+
+class CommentSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    author = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['type', 'author', 'comment', 'content_type', 'published', 'id', 'entry']
+
+    def get_type(self, obj):
+        return "comment"
+
+    def get_id(self, obj):
+        return f"{obj.author.url}/commented/{obj.id}"
+
+    

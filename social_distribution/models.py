@@ -44,3 +44,13 @@ class Follow(models.Model):
     )
     approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Comment(models.Model):
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    entry = models.ForeignKey(TextEntry, on_delete=models.CASCADE, related_name="comments")
+    content = models.TextField()
+    content_type = models.CharField(max_length=100, default="text/markdown")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+   
+

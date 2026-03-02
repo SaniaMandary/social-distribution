@@ -29,4 +29,7 @@ urlpatterns = [
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
 
     path("authors/", views.author_list, name="author_list"),
+
+    path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
+    path("api/entries/<int:entry_id>/comments/add/", views.add_comment, name="add_comment"),
 ]

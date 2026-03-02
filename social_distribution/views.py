@@ -1,3 +1,5 @@
+from datetime import timezone
+
 import markdown
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -9,9 +11,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 
-from .models import Like, TextEntry, Author, Follow
+from .models import Like, TextEntry, Author, Follow, Comment
 from .forms import ChangeProfileForm
-from .serializers import EntrySerializer, LikeSerializer
+from .serializers import EntrySerializer, LikeSerializer, CommentSerializer
 
 # VIEWS
 
@@ -340,3 +342,37 @@ def friends(author1, author2):
             approved=True
         ).exists()
     )
+
+@api_view(['GET'])
+def get_comments(request, entry_id):
+    comments = Comment.objects.filter(entry__id=entry_id).order_by('-published')
+    serializer = CommentSerializer(comments, many=True)
+
+    return Response({
+        "type": "comments",
+        "id": f"/entries/{entry_id}/comments",
+        "web": f"/entries/{entry_id}/comments",
+        "page_number": 1,
+        "size": len(serializer.data),
+        "count": len(serializer.data),
+        "src": serializer.data
+    })
+
+# POST a new comment
+@login_required
+@api_view(['POST'])
+def post_entry_comment(request, entry_id):
+    entry = get_object_or_404(TextEntry, id=entry_id)
+    content = request.data.get("comment", "").strip()
+    if not content:
+        return Response({"error": "Missing comment content"}, status=400)
+
+    comment = Comment.objects.create(
+        author=request.user,
+        entry=entry,
+        content=content,
+        content_type=request.data.get("contentType", "text/markdown"),
+        created_at=timezone.now()
+    )
+    serializer = CommentSerializer(comment, context={'request': request})
+    return Response(serializer.data, status=201)
