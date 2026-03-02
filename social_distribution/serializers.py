@@ -6,7 +6,7 @@ from .models import Like, TextEntry, Comment
 class EntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = TextEntry
-        fields = ['id', 'belonging_url', 'entry_text', 'pub_date']
+        fields = ['id', 'belonging_url', 'entry_text', 'pub_date', 'content_type', 'visibility']
 
 class AuthorSerializer(serializers.Serializer):
     url = serializers.CharField()
