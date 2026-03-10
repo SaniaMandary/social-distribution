@@ -163,6 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </script>
 
+    {% if is_visible %} 
+
   <header>
     <!---Are we dealing with a markdown entry? -->  
    {% if entry.content_type == 'text/markdown' %}
@@ -228,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <input type="submit" value="Post Comment">
     </form>
     {% endif %}
-    </section>
+  </section>
 
     <hr>
 
@@ -258,6 +260,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <input type="submit" value="Delete">
         </form>
     </section>
+    {% endif %}
+
+    
+    {% else %}
+        <p>You are not authorized to view this entry.</p>
     {% endif %}
 
     <a href="/social_distribution/">Back</a>

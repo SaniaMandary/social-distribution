@@ -90,12 +90,19 @@ class DetailView(generic.DetailView):
     def get_context_data(self, **kwargs): 
         context = super().get_context_data(**kwargs)
         entry = context['entry']
+        user = self.request.user
+
+        # hide any friends only entry from anonymous users
+        if entry.visibility == "FRIENDS" and user.is_anonymous:
+            context['is_visible'] = False
+            pass
+        else:
+            context['is_visible'] = True
 
         #redner markdown if content_type is selected as such 
         if entry.content_type == 'text/markdown': 
             entry.content_rendered = markdown.markdown(entry.entry_text)
 
-        user = self.request.user
         liked_object = f"{self.request.scheme}://{self.request.get_host()}/social_distribution/entries/{entry.id}"
         context['likes_count'] = Like.objects.filter(object=liked_object).count()
         
