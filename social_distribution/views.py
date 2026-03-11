@@ -107,9 +107,11 @@ class DetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         entry = context['entry']
         user = self.request.user
+        author = Author.objects.get(pk=self.request.user.username)
+        author_entry_belongs_to = Author.objects.get(pk=entry.belonging_url)
 
-        # hide any friends only entry from anonymous users, also hide if deleted
-        if (entry.visibility == "FRIENDS" and user.is_anonymous) or entry.is_deleted:
+        # hide any friends only entry from anonymous users, non-friends, also hide if deleted
+        if (entry.visibility == "FRIENDS" and user.is_anonymous) or not friends(author, author_entry_belongs_to) or entry.is_deleted:
             context['is_visible'] = False
             pass
         else:
