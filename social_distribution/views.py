@@ -111,7 +111,7 @@ class DetailView(generic.DetailView):
         author_entry_belongs_to = Author.objects.get(pk=entry.belonging_url)
 
         # hide any friends only entry from anonymous users, non-friends, also hide if deleted
-        if (entry.visibility == "FRIENDS" and user.is_anonymous) or not friends(author, author_entry_belongs_to) or entry.is_deleted:
+        if (entry.visibility == "FRIENDS" and user.is_anonymous) or (not friends(author, author_entry_belongs_to) and author != author_entry_belongs_to) or entry.is_deleted:
             context['is_visible'] = False
             pass
         else:
