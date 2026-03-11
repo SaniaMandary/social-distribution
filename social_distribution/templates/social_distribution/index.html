@@ -12,9 +12,9 @@
         <h1>Welcome {{author}}</h1>
         <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
         <a href="{% url 'social_distribution:newentry' %}">New Entry</a>
-        <a href="{% url 'social_distribution:author_list'%}">Authors</a>
         <a href="{% url 'social_distribution:changeprofile' %}">Edit Profile</a>
         <a href="{% url 'social_distribution:follow_requests' %}">Follow Requests</a>
+        <a href="{% url 'social_distribution:author_list'%}">Authors</a>
         <a href="{% url 'social_distribution:followers_list' %}">Followers</a>
         <a href="{% url 'social_distribution:friends_list' %}">Friends</a>
         <form method="POST" action="{% url 'social_distribution:signout' %}">
@@ -27,10 +27,25 @@
         <ul>
         {% for entry in latest_entry_list %}
             <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</a></li>
-    {% endfor %}
+        {% endfor %}
         </ul>
     {% else %}
         <p>No entries are available.</p>
     {% endif %}
+
+    <br>
+
+    <section>
+    {% if following_entry_stream %}
+        <p>From who you're following and your friends:</p>
+        <ul>
+        {% for entry in following_entry_stream %}
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% else %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% endif %}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Your stream is empty (follow people and make friends)!</p>
+    {% endif %}
+    </section>
 </body>
 </html>

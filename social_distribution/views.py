@@ -26,8 +26,28 @@ def index(request):
 
         entries = TextEntry.objects.filter(belonging_url=request.user.username, is_deleted=False).order_by("-pub_date")
 
+        # populate stream to see content of who you are following and your friends entries
+        aggregate_entries = None
+        people_you_follow = Follow.objects.filter(follower=author, approved=True).order_by("-created_at")
+        for follow in people_you_follow:
+            following_author = follow.following
+            print(follow.follower.url + " is following " + follow.following.url)
+
+            # aggregate the entries that should we should see by following someone
+            following_entries = TextEntry.objects.filter(belonging_url=following_author.url, visibility="PUBLIC", is_deleted=False)
+            if friends(author, following_author):
+                following_entries_friends = TextEntry.objects.filter(belonging_url=following_author.url, visibility="FRIENDS", is_deleted=False)
+                following_entries = following_entries.union(following_entries_friends).order_by("-pub_date")
+
+            if aggregate_entries == None:
+                aggregate_entries = following_entries
+            else:
+                aggregate_entries = aggregate_entries.union(following_entries).order_by("-pub_date")
+
+
         entries_dictionary = {
             'latest_entry_list' : entries.values(),
+            'following_entry_stream' : None if aggregate_entries is None else aggregate_entries.values(),
             'author' : author.name,
             'picture_url' : author.picture,
             'public_url' : author.url,
@@ -66,10 +86,6 @@ def profile_view(request, username):
             approved=True
         ).exists()
 
-    
-    # add required data to render posts
-    #entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False, visibility='PUBLIC').order_by("-pub_date")
-
     entries_dictionary = {
         'latest_entry_list' : entries.values(),
         'author' : author.name,
@@ -92,8 +108,8 @@ class DetailView(generic.DetailView):
         entry = context['entry']
         user = self.request.user
 
-        # hide any friends only entry from anonymous users
-        if entry.visibility == "FRIENDS" and user.is_anonymous:
+        # hide any friends only entry from anonymous users, also hide if deleted
+        if (entry.visibility == "FRIENDS" and user.is_anonymous) or entry.is_deleted:
             context['is_visible'] = False
             pass
         else:
