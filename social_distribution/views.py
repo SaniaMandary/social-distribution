@@ -27,27 +27,31 @@ def index(request):
         entries = TextEntry.objects.filter(belonging_url=request.user.username, is_deleted=False).order_by("-pub_date")
 
         # populate stream to see content of who you are following and your friends entries
-        aggregate_entries = None
+        followfriends_entries = None
         people_you_follow = Follow.objects.filter(follower=author, approved=True).order_by("-created_at")
         for follow in people_you_follow:
             following_author = follow.following
-            print(follow.follower.url + " is following " + follow.following.url)
 
             # aggregate the entries that should we should see by following someone
             following_entries = TextEntry.objects.filter(belonging_url=following_author.url, visibility="PUBLIC", is_deleted=False)
             if friends(author, following_author):
                 following_entries_friends = TextEntry.objects.filter(belonging_url=following_author.url, visibility="FRIENDS", is_deleted=False)
-                following_entries = following_entries.union(following_entries_friends).order_by("-pub_date")
+                following_entries = following_entries.union(following_entries_friends)
+            following_entries_unlisted = TextEntry.objects.filter(belonging_url=following_author.url, visibility="UNLISTED", is_deleted=False)
+            following_entries = following_entries.union(following_entries_unlisted).order_by("-pub_date")
 
-            if aggregate_entries == None:
-                aggregate_entries = following_entries
+            if followfriends_entries == None:
+                followfriends_entries = following_entries
             else:
-                aggregate_entries = aggregate_entries.union(following_entries).order_by("-pub_date")
+                followfriends_entries = followfriends_entries.union(following_entries).order_by("-pub_date")
 
+        # all public entries
+        public_entries = TextEntry.objects.filter(visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
 
         entries_dictionary = {
             'latest_entry_list' : entries.values(),
-            'following_entry_stream' : None if aggregate_entries is None else aggregate_entries.values(),
+            'following_entry_stream' : None if followfriends_entries is None else followfriends_entries.values(),
+            'all_public_entries' : public_entries.values(),
             'author' : author.name,
             'picture_url' : author.picture,
             'public_url' : author.url,
@@ -111,7 +115,7 @@ class DetailView(generic.DetailView):
         author_entry_belongs_to = Author.objects.get(pk=entry.belonging_url)
 
         # hide any friends only entry from anonymous users, non-friends, also hide if deleted
-        if (entry.visibility == "FRIENDS" and user.is_anonymous) or (not friends(author, author_entry_belongs_to) and author != author_entry_belongs_to) or entry.is_deleted:
+        if entry.is_deleted or (entry.visibility == "FRIENDS" and user.is_anonymous) or (entry.visibility == "FRIENDS" and author != author_entry_belongs_to and not friends(author, author_entry_belongs_to)):
             context['is_visible'] = False
             pass
         else:
@@ -316,7 +320,6 @@ def get_likes(request, object_id):
         "src": serializer.data
     })
 
-
 @login_required
 @api_view(['POST'])
 def add_like_entry(request, entry_id):
@@ -498,7 +501,6 @@ def get_comments(request, entry_id):
         "src": serializer.data
     })
 
-# POST a new comment
 @login_required
 @api_view(['POST'])
 def post_entry_comment(request, entry_id):
@@ -516,3 +518,141 @@ def post_entry_comment(request, entry_id):
     )
     serializer = CommentSerializer(comment, context={'request': request})
     return Response(serializer.data, status=201)
+
+
+
+# Entries Public API
+def entry_get_response(request, username, entry_id):
+    # GET case for entry api request
+    try:
+        target_author = Author.objects.get(pk=username)
+        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username, is_deleted=False)
+
+        # consider the case that the entry is friends only
+        if entry.visibility == "FRIENDS":
+            if request.user.is_authenticated==False:
+                return Response("You must be logged in to access friends only entries." ,status=403)
+            else:
+                try:
+                    me = Author.objects.get(pk=request.user.username)
+                    if me != target_author and friends(target_author, me) == False:
+                        return Response(me.url + " is not friends with " + target_author.url ,status=403)
+                except Author.DoesNotExist:
+                    return Response("Authenticated author does not exist." ,status=500)
+
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data)
+    except TextEntry.DoesNotExist:
+        return Response("Entry does not exist." ,status=404)
+    except Author.DoesNotExist:
+        return Response("Author/user does not exist." ,status=404)
+def entry_delete_response(request, username, entry_id):
+    try:
+        target_author = Author.objects.get(pk=username)
+        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
+
+        if request.user.is_authenticated == False or request.user.username is not username:
+            return Response("You must be logged in with the correct user to delete entries." ,status=403)
+
+        entry.is_deleted = True
+        entry.save()
+        return Response("Entry deleted.", status=200)
+    except TextEntry.DoesNotExist:
+        return Response("Entry does not exist." ,status=404)
+    except Author.DoesNotExist:
+        return Response("Author/user does not exist." ,status=404)
+def entry_put_response(request, username, entry_id):
+    try:
+        target_author = Author.objects.get(pk=username)
+        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
+
+        if request.user.is_authenticated == False or request.user.username is not username:
+            return Response("You must be logged in with the correct user to edit entries." ,status=403)
+
+        editentry(request, entry_id)
+        return Response("Entry edited." ,status=200)
+    except TextEntry.DoesNotExist:
+        return Response("Entry does not exist." ,status=404)
+    except Author.DoesNotExist:
+        return Response("Author/user does not exist." ,status=404)
+@api_view(['GET', 'DELETE', 'PUT'])
+def public_user_entry(request, username, entry_id):
+    # handle the get delete and put request for entries
+    if request.method == 'GET':
+        return entry_get_response(request, username, entry_id)
+    
+    if request.method=='DELETE':
+        return entry_delete_response(request,username,entry_id)
+    
+    if request.method=="PUT":
+        return entry_put_response(request,username,entry_id)
+
+@api_view(['GET'])
+def public_get_entry(request, entry_id):
+    try:
+        entry = TextEntry.objects.get(pk=entry_id, is_deleted=False)
+
+        # consider the case that the entry is friends only
+        if entry.visibility == "FRIENDS":
+            if request.user.is_authenticated==False:
+                return Response("You must be logged in to access friends only entries." ,status=403)
+
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data)
+    
+    except TextEntry.DoesNotExist:
+        return Response("Entry does not exist." ,status=404)
+
+@api_view(['GET', 'POST'])
+def public_user_entries(request, username):
+    # get the target author
+    try:
+        target_author = Author.objects.get(url=username)
+    except Author.DoesNotExist:
+        return Response("Target author does not exist", 400)
+
+    # handle get request for entries
+    if request.method=="GET":
+        # return all of the public entries for target user
+        if request.user.is_authenticated==False:
+            entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
+            serializer = EntrySerializer(entries, many=True)
+            return Response(serializer.data)
+        # authenticated
+        else:
+            # return all your own entries
+            if request.user.username == username:
+                entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False).order_by("-pub_date")
+                serializer = EntrySerializer(entries, many=True)
+                return Response(serializer.data)
+            else:
+                request_author = Author.objects.get(pk=request.user.username)
+                try:
+                    following = Follow.objects.get(follower=request_author, following=target_author, approved=True)
+
+                    # return all entries as a friend
+                    if friends(target_author, request_author):
+                        entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False).order_by("-pub_date")
+                        serializer = EntrySerializer(entries, many=True)
+                        return Response(serializer.data)
+                    
+                    # return public + unlisted as only a follower
+                    entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False)
+                    entries = entries.union(TextEntry.objects.filter(belonging_url=username, visibility="UNLISTED", is_deleted=False)).order_by("-pub_date")
+                    serializer = EntrySerializer(entries, many=True)
+                    return Response(serializer.data)
+                except Follow.DoesNotExist:
+                    return Response("You do not follow the target author.", 400)
+                
+    # handle post for creating an entry
+    if request.method == "POST":
+        if request.user.is_authenticated == False:
+            return Response("You must be logged in to create an entry.", 403)
+        if request.user.username is not username:
+            return Response("You must be logged in as the target user to create an entry.", 403)
+        
+        response = addentry(request)
+        return Response("Added entry.", response.status_code)
+
+    pass
+#

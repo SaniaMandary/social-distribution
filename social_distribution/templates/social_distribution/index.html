@@ -24,6 +24,7 @@
     </nav>
 
     {% if latest_entry_list %}
+        <p>Your entries:</p>
         <ul>
         {% for entry in latest_entry_list %}
             <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</a></li>
@@ -47,5 +48,21 @@
         <p>Your stream is empty (follow people and make friends)!</p>
     {% endif %}
     </section>
+
+    <br>
+
+    <section>
+    {% if all_public_entries %}
+        <p>All public entries:</p>
+        <ul>
+        {% for entry in all_public_entries %}
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% else %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% endif %}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No public entries, make the first!</p>
+    {% endif %}
+    </section>
+
 </body>
 </html>
