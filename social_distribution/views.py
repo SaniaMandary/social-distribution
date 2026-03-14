@@ -140,12 +140,12 @@ class DetailView(generic.DetailView):
         comment_list = []
         for comment in comments:
             comment.likes_count = Like.objects.filter(
-                object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.id}"
+                object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.pk}"
             ).count()
             if user.is_authenticated:
                 comment.user_liked = Like.objects.filter(
                     author__pk=user.username,
-                    object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.id}"
+                    object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.pk}"
                 ).exists()
             else:
                 comment.user_liked = False

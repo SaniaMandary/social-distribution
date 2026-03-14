@@ -38,19 +38,19 @@ class LikeTest(TestCase):
         self.entry = make_entry(self.author)
 
     def test_add_like_to_entry(self):
-        response = self.client.post(f"/social_distribution/api/likes/add/{self.entry.id}/", follow=True)
+        response = self.client.post(f"/social_distribution/api/likes/add/{self.entry.pk}/", follow=True)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("success"))
         self.assertTrue(data.get("liked"))
         # Verify the like was created with full URL format
-        liked_object = f"http://testserver/social_distribution/entries/{self.entry.id}"
+        liked_object = f"http://testserver/social_distribution/entries/{self.entry.pk}"
         like = Like.objects.filter(object=liked_object, author=self.author).first()
         self.assertIsNotNone(like)
 
     def test_get_likes_for_entry(self):
         # First, add a like to the entry with correct URL format
-        liked_object = f"http://testserver/social_distribution/entries/{self.entry.id}"
+        liked_object = f"http://testserver/social_distribution/entries/{self.entry.pk}"
         Like.objects.create(object=liked_object, author=self.author)
         # Verify the like exists in the database
         likes = Like.objects.filter(object=liked_object)
@@ -59,16 +59,16 @@ class LikeTest(TestCase):
 
     def test_unlike_entry(self):
         # Add a like to the entry
-        liked_object = f"http://testserver/social_distribution/entries/{self.entry.id}"
+        liked_object = f"http://testserver/social_distribution/entries/{self.entry.pk}"
         like = Like.objects.create(object=liked_object, author=self.author)
-        self.assertTrue(Like.objects.filter(id=like.id).exists())
+        self.assertTrue(Like.objects.filter(id=like.pk).exists())
 
         # Now unlike it by posting to the same endpoint again (toggles)
-        response = self.client.post(f"/social_distribution/api/likes/add/{self.entry.id}/", follow=True)
+        response = self.client.post(f"/social_distribution/api/likes/add/{self.entry.pk}/", follow=True)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("success"))
         self.assertFalse(data.get("liked"))  # Should be unliked now
         
         # Assert that the like was removed
-        self.assertFalse(Like.objects.filter(id=like.id).exists()) 
+        self.assertFalse(Like.objects.filter(id=like.pk).exists()) 

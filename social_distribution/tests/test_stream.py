@@ -134,7 +134,7 @@ class TestSelfStreamVisibility(TestCase):
         self.assertEqual(response.status_code, 200)
 
 # tests api for visibility as a non-signed in user
-class TestSelfStreamVisibility(TestCase):
+class TestAnonymousStreamVisibility(TestCase):
     def setUp(self):
         self.client = Client()
         self.user1, self.author1 = make_user_and_author()

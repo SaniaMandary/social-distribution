@@ -43,7 +43,7 @@ class FollowingAuthorsTests(TestCase):
 
     def test_friends(self):
         #not friends
-        self.assertFalse(self.author1.friends(self.auhtor2) if hasattr(self.author1, 'friends') else False)
+        self.assertFalse(friends(self.author1, self.author2))
 
         #mutual follows
         Follow.objects.create(follower=self.author1, following=self.author2, approved=True)

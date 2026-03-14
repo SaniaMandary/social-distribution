@@ -44,7 +44,7 @@ class CommentTest(TestCase):
             "contentType": "text/markdown"
         }
         response = self.client.post(
-            f"/social_distribution/api/entries/{self.entry.id}/comments/add/",
+            f"/social_distribution/api/entries/{self.entry.pk}/comments/add/",
             data=comment_data,
             content_type="application/json"
         )
@@ -52,7 +52,7 @@ class CommentTest(TestCase):
 
         # Verify the comment was created in the database
         comment = Comment.objects.filter(entry=self.entry, author=self.author).first()
-        self.assertIsNotNone(comment)
+        assert comment is not None
         self.assertEqual(comment.content, comment_data["comment"])
         self.assertEqual(comment.content_type, comment_data["contentType"])
 
@@ -65,7 +65,7 @@ class CommentTest(TestCase):
             content_type="text/markdown"
         )
 
-        response = self.client.get(f"/social_distribution/api/entries/{self.entry.id}/comments/")
+        response = self.client.get(f"/social_distribution/api/entries/{self.entry.pk}/comments/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data.get("type"), "comments")
@@ -86,14 +86,14 @@ class CommentTest(TestCase):
             content_type="text/markdown"
         )
 
-        response = self.client.post(f"/social_distribution/api/comments/{comment.id}/likes/", follow=True)
+        response = self.client.post(f"/social_distribution/api/comments/{comment.pk}/likes/", follow=True)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("success"))
         self.assertTrue(data.get("liked"))
 
         # Verify the like was created with correct URL format
-        liked_object = f"http://testserver/social_distribution/comments/{comment.id}"
+        liked_object = f"http://testserver/social_distribution/comments/{comment.pk}"
         like_exists = Like.objects.filter(object=liked_object, author=self.author).exists()
         self.assertTrue(like_exists)    
     

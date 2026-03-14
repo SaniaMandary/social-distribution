@@ -62,6 +62,7 @@ class Comment(models.Model):
     content = models.TextField()
     content_type = models.CharField(max_length=100, default="text/markdown")
     created_at = models.DateTimeField(auto_now_add=True)
-
-   
-
+    # Not stored in DB
+    likes_count: int = 0
+    user_liked: bool = False
+    
