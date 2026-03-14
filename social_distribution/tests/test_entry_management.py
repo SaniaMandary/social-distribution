@@ -173,6 +173,14 @@ class EditEntryTests(TestCase):
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.entry_text, "Original text")
 
+    def test_author_can_change_visibility_when_editing(self):
+        """Editing an existing entry can update visibility."""
+        url = reverse("social_distribution:editentry", args=[self.entry.pk])
+        self.client.post(url, {"entry_text": "Original text", "visibility": "FRIENDS"})
+
+        self.entry.refresh_from_db()
+        self.assertEqual(self.entry.visibility, "FRIENDS")
+
 class EntryVisibilityTests(TestCase):
     """
     As an author, I don't want anyone except the node admin to see my deleted entries.

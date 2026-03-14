@@ -246,11 +246,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 <option value="text/markdown" {% if entry.content_type == 'text/markdown' %}selected{% endif %}>CommonMark (Markdown)</option>
             </select><br><br>
 
+            <label for="visibility">Visibility:</label><br>
+            <select id="edit_visibility" name="visibility">
+                <option value="PUBLIC" {% if entry.visibility == 'PUBLIC' %}selected{% endif %}>Public</option>
+                <option value="FRIENDS" {% if entry.visibility == 'FRIENDS' %}selected{% endif %}>Friends</option>
+                <option value="UNLISTED" {% if entry.visibility == 'UNLISTED' %}selected{% endif %}>Unlisted</option>
+            </select><br><br>
+
             <section id="edit-markdown-section" style="display:none;">
                 <button id="edit-convert-btn">Preview Markdown</button>
                 <h3>Output</h3>
                 <p id="edit-markdown-output"></p>
-            </section>
 
             <input type="submit" value="Save Changes">
         </form>

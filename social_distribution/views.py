@@ -284,10 +284,13 @@ def editentry(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
     new_text = request.data.get('entry_text', '').strip()
     new_content_type = request.data.get('content_type', '').strip()
+    new_visibility = request.data.get('visibility', '').strip()
     if new_text:
         entry.entry_text = new_text
-        if new_content_type in ['text/plain', 'text/markdown']: 
+        if new_content_type in ['text/plain', 'text/markdown']:
             entry.content_type = new_content_type
+        if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
+            entry.visibility = new_visibility
         entry.save()
         return redirect("/social_distribution")
     return redirect("/social_distribution/editentry/" + str(entry_id))
