@@ -38,6 +38,7 @@ urlpatterns = [
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
 
     path("followers/", views.followers_list, name="followers_list"),
+    path("following/", views.following_list, name="following_list"),
     path("friends/", views.friends_list, name="friends_list"),
 
     # Entries Public API

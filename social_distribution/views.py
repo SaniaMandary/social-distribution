@@ -456,6 +456,17 @@ def followers_list(request):
 
     return render(request, "social_distribution/followers_list.html", {"followers": followers, "author": current_author})
 
+@login_required
+def following_list(request):
+    current_author = Author.objects.get(pk=request.user.username)
+
+    following = Follow.objects.filter(
+        follower=current_author,
+        approved=True
+    ).select_related('following')
+
+    return render(request, "social_distribution/following_list.html", {"following": following, "author": current_author})
+
 def friends(author1, author2):
     return(
         Follow.objects.filter(
