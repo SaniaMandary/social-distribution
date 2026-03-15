@@ -82,12 +82,19 @@ def profile_view(request, username):
     ).filter(entry_filter).order_by("-pub_date")
 
     is_following = False
+    is_follow_requested = False
     if current_author and not is_own_profile:
         is_following = Follow.objects.filter(
-            follower=current_author,
+            follower = current_author,
             following=author,
             approved=True
         ).exists()
+        if not is_following:
+            is_follow_requested = Follow.objects.filter(
+                follower=current_author,
+                following=author,
+                approved=False
+            ).exists()
 
     entries_dictionary = {
         'latest_entry_list' : entries.values(),
@@ -95,10 +102,10 @@ def profile_view(request, username):
         'author_username': author.url,
         'picture_url' : author.picture,
         'is_following': is_following,
+        'is_follow_requested': is_follow_requested,
         'is_own_profile': is_own_profile
     }
 
-    # render the page
     return render(request, "social_distribution/publicprofile.html", entries_dictionary)
 
 class DetailView(generic.DetailView):

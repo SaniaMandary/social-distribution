@@ -18,6 +18,8 @@
                 {% csrf_token %}
                 <button type="submit">Unfollow</button>
             </form>
+        {% elif is_follow_requested %}
+            <button disabled>Follow request sent</button>
         {% else %}
            <form method="post" action="{% url 'social_distribution:follow_author' username=author_username %}">
                 {% csrf_token %}
