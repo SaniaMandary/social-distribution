@@ -7,7 +7,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/index.css' %}">
 </head>
 <body>
-    <nav>
+    <nav class="nav-bar">
         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
         <h1>Welcome {{author}}</h1>
         <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
@@ -25,28 +25,40 @@
     </nav>
 
     {% if latest_entry_list %}
-        <p>Your entries:</p>
-        <ul>
-        {% for entry in latest_entry_list %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</a></li>
-        {% endfor %}
-        </ul>
+        <h2>Your entries:</h2>
+        <ol class="entries">
+            {% for entry in latest_entry_list %}
+                <a href="{% url 'social_distribution:detail' entry.id %}" class='entry-card-link-wrapper'>
+                    <section class="entry-card" style="border-left:5px solid rgb(61, 159, 184);">
+                        <p class="entry-card-author">You</p>
+                        <p>{{entry.pub_date}}</p>
+                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                    </section>
+                </a>
+            {% endfor %}
+        </ol>
     {% else %}
-        <p>No entries are available.</p>
+        <h2>No entries are available.</h2>
     {% endif %}
 
     <br>
 
     <section>
     {% if following_entry_stream %}
-        <p>From who you're following and your friends:</p>
-        <ul>
-        {% for entry in following_entry_stream %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% else %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% endif %}</a></li>
-        {% endfor %}
-        </ul>
+        <h2>From who you're following and your friends:</h2>
+        <ol class="entries">
+            {% for entry in following_entry_stream %}
+                <a href="{% url 'social_distribution:detail' entry.id %}" class='entry-card-link-wrapper'>
+                    <section class="entry-card" style="border-left:5px solid rgb(61, 184, 88);">
+                        <p class="entry-card-author">[{{entry.visibility}}] {{entry.belonging_url}}</p>
+                        <p>{{entry.pub_date}}</p>
+                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                    </section>
+                </a>
+            {% endfor %}
+        </ol>
     {% else %}
-        <p>Your stream is empty (follow people and make friends)!</p>
+        <h2>Your stream is empty (follow people and make friends)!</h2>
     {% endif %}
     </section>
 
@@ -54,14 +66,20 @@
 
     <section>
     {% if all_public_entries %}
-        <p>All public entries:</p>
-        <ul>
-        {% for entry in all_public_entries %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">{% if entry.content_type == 'text/markdown' %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% else %}[{{entry.belonging_url}} - {{entry.visibility}}] {{ entry.entry_text|truncatechars:50 }}{% endif %}</a></li>
-        {% endfor %}
-        </ul>
+        <h2>All public entries:</h2>
+        <ol class="entries">
+            {% for entry in all_public_entries %}
+                <a href="{% url 'social_distribution:detail' entry.id %}" class='entry-card-link-wrapper'>
+                    <section class="entry-card" style="border-left:5px solid rgb(0, 0, 0);">
+                        <p class="entry-card-author">{{entry.belonging_url}}</p>
+                        <p>{{entry.pub_date}}</p>
+                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                    </section>
+                </a>
+            {% endfor %}
+        </ol>
     {% else %}
-        <p>No public entries, make the first!</p>
+        <h2>No public entries, make the first!</h2>
     {% endif %}
     </section>
 

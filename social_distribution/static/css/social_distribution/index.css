@@ -12,37 +12,32 @@ html {
 html>body {
     padding: 10px; 
     margin: 0 auto;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 80%, rgba(199, 244, 255, 1) 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 90%, rgba(199, 244, 255, 1) 100%);
     background-repeat: no-repeat;
     background-attachment: fixed; /** https://stackoverflow.com/questions/34108433/html-css-linear-gradient-not-taking-up-full-screen **/
 }
 
-html>body>nav {
+.nav-bar {
     border: 1px solid black;
 
     padding: 15px;
     display: flex;
-
     margin: 0 auto;
-    justify-content: center;
-    align-content: center;
-    text-align: center;
 
     background-color: rgba(199, 244, 255, 1);
-
     border-radius: 10px;
 }
-html>body>nav>form {
+.nav-bar>form {
     display:block;
     margin: auto 0;
     padding: 10px;
 }
-html>body>nav>h1 {
+.nav-bar>h1 {
     display:block;
     margin: auto 0;
     padding: 10px;
 }
-html>body>nav>a {
+.nav-bar>a {
     display:block;
     margin: auto 0;
     padding: 10px;
@@ -51,4 +46,29 @@ html>body>nav>a {
 input{
     margin: 0 1%;
     border-radius: 5px;
+}
+
+.entries {
+    padding: 0;
+}
+.entry-card-link-wrapper, .entry-card:visited {
+    text-decoration: none;
+    color: #000000;
+}
+.entry-card {
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+}
+.entry-card>p {
+    margin: 0px;
+}
+.entry-card-author {
+    margin: 0px;
+    font-weight: bold;
+    font-size: 125%;
+}
+.entry-card-entrytext {
+    margin-top: 10px;
 }
