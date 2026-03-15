@@ -257,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <button id="edit-convert-btn">Preview Markdown</button>
                 <h3>Output</h3>
                 <p id="edit-markdown-output"></p>
+            </section>
 
             <input type="submit" value="Save Changes">
         </form>
@@ -275,7 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <a href="/social_distribution/">Back</a>
 
-    <script src="{% static 'markdown-editor.min.js' %}"></script>
+    <script src="{% static 'markdown-editor.js' %}"></script>
     <script> 
         document.addEventListener('DOMContentLoaded', function() { 
             initMarkdownEditor('edit_content_type', 'edit_entry_text',

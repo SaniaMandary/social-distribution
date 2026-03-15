@@ -35,7 +35,6 @@ urlpatterns = [
     path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"),
 
     path("reject_follow/<str:username>/", views.reject_follow, name="reject_follow"),
-    path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
 
     path("followers/", views.followers_list, name="followers_list"),
     path("following/", views.following_list, name="following_list"),

@@ -3,13 +3,9 @@ from .models import TextEntry
 
 class ChangeProfileForm(forms.Form):
     name = forms.CharField(label="name")
-    description = forms.CharField(label="description")
-    picture = forms.CharField(label="picture")
-    github = forms.CharField(label="github")
-
-    def clean(self):
-        cleaned_data = super().clean()
-        return cleaned_data
+    description = forms.CharField(label="description", required=False)
+    picture = forms.CharField(label="picture", required=False)
+    github = forms.CharField(label="github", required=False)
 
 
 class TextEntryForm(forms.ModelForm):
@@ -20,5 +16,4 @@ class TextEntryForm(forms.ModelForm):
             'entry_text': forms.Textarea(attrs={'rows': 5}),
             'content_type': forms.Select(),
             'visibility': forms.Select(),
-            }
-            
+        }

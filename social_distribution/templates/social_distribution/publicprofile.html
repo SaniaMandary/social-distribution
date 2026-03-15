@@ -29,7 +29,13 @@
     {% if latest_entry_list %}
         <ul>
         {% for entry in latest_entry_list %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">{{ entry.entry_text }}</a></li>
+            <li><a href="{% url 'social_distribution:detail' entry.id %}">
+                {% if entry.content_type == 'text/markdown' %}
+                    {{ entry.entry_text|truncatechars:50 }}
+                {% else %}
+                    {{ entry.entry_text }}
+                {% endif %}
+            </a></li>
         {% endfor %}
         </ul>
     {% else %}

@@ -1,44 +1,42 @@
 from django.utils import timezone
 from django.db import models
 
-# Create your models here.
 class Author(models.Model):
     url = models.CharField(primary_key=True)
     name = models.CharField(max_length=200)
-    description = models.CharField(max_length=200)
-    picture = models.CharField(max_length=200)
-    github = models.CharField(max_length=200)
+    description = models.CharField(max_length=200, blank=True, default='')
+    picture = models.CharField(max_length=200, blank=True, default='')
+    github = models.CharField(max_length=200, blank=True, default='')
 
 class TextEntry(models.Model):
-    CONTENT_TYPE_CHOICES = {
+    CONTENT_TYPE_CHOICES = [
         ('text/plain', 'Plain Text'),
         ('text/markdown', 'CommonMark'),
-    }
+    ]
 
     VISIBILITY_CHOICES = [
-    ('PUBLIC', 'Public'),
-    ('FRIENDS', 'Friends'),
-    ('UNLISTED', 'Unlisted'),
+        ('PUBLIC', 'Public'),
+        ('FRIENDS', 'Friends'),
+        ('UNLISTED', 'Unlisted'),
     ]
 
     belonging_url = models.CharField()
-    entry_text = models.CharField(max_length=300)    # Store the text in a char field in the database
-    pub_date = models.DateTimeField("date published", default=timezone.now)   # Store the published date in a datetime field in the database
-    is_deleted = models.BooleanField(default=False)  # soft delete flag
+    entry_text = models.TextField()
+    pub_date = models.DateTimeField("date published", default=timezone.now)
+    is_deleted = models.BooleanField(default=False)
     content_type = models.CharField(
         max_length=50,
         choices=CONTENT_TYPE_CHOICES,
         default='text/plain'
     )
-   
     visibility = models.CharField(
-    max_length=20,
-    choices=VISIBILITY_CHOICES,
-    default='PUBLIC'
-)
+        max_length=20,
+        choices=VISIBILITY_CHOICES,
+        default='PUBLIC'
+    )
 
 class Like(models.Model):
-    object = models.CharField(max_length=200) #could be an entry or comment
+    object = models.CharField(max_length=200)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     published = models.DateTimeField(auto_now_add=True)
 
@@ -65,4 +63,3 @@ class Comment(models.Model):
     # Not stored in DB
     likes_count: int = 0
     user_liked: bool = False
-    

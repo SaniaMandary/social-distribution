@@ -1,8 +1,6 @@
 from django.utils import timezone
 import markdown
-from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.urls import reverse
 from django.views import generic
 from django.db.models import Q
 from rest_framework.decorators import api_view
@@ -18,8 +16,6 @@ from .serializers import EntrySerializer, LikeSerializer, CommentSerializer
 # VIEWS
 
 def index(request):
-    print("Is user authenticated? " + str(request.user.username))
-
     if request.user.is_authenticated:
         # authenticated personal page view
         author = Author.objects.get(pk=request.user.username)
@@ -73,7 +69,10 @@ def profile_view(request, username):
 
     entry_filter = Q(visibility='PUBLIC')
 
-    if current_author and not is_own_profile:
+    if is_own_profile:
+        # owner sees all their own entries
+        entry_filter |= Q(visibility='FRIENDS') | Q(visibility='UNLISTED')
+    elif current_author:
         if friends(current_author, author):
             entry_filter |= Q(visibility='FRIENDS')
     
@@ -85,7 +84,7 @@ def profile_view(request, username):
     is_following = False
     if current_author and not is_own_profile:
         is_following = Follow.objects.filter(
-            follower = current_author,
+            follower=current_author,
             following=author,
             approved=True
         ).exists()
@@ -97,7 +96,7 @@ def profile_view(request, username):
         'picture_url' : author.picture,
         'is_following': is_following,
         'is_own_profile': is_own_profile
-        }
+    }
 
     # render the page
     return render(request, "social_distribution/publicprofile.html", entries_dictionary)
@@ -111,17 +110,30 @@ class DetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         entry = context['entry']
         user = self.request.user
-        author = Author.objects.get(pk=self.request.user.username)
+
         author_entry_belongs_to = Author.objects.get(pk=entry.belonging_url)
 
-        # hide any friends only entry from anonymous users, non-friends, also hide if deleted
-        if entry.is_deleted or (entry.visibility == "FRIENDS" and user.is_anonymous) or (entry.visibility == "FRIENDS" and author != author_entry_belongs_to and not friends(author, author_entry_belongs_to)):
+        # deleted entries are never visible
+        if entry.is_deleted:
             context['is_visible'] = False
-            pass
-        else:
+
+        # public and unlisted entries are always visible via link
+        elif entry.visibility in ("PUBLIC", "UNLISTED"):
             context['is_visible'] = True
 
-        #redner markdown if content_type is selected as such 
+        # friends-only: need to be authenticated and be a friend (or the owner)
+        elif entry.visibility == "FRIENDS":
+            if not user.is_authenticated:
+                context['is_visible'] = False
+            else:
+                viewer = Author.objects.get(pk=user.username)
+                is_owner = viewer == author_entry_belongs_to
+                context['is_visible'] = is_owner or friends(viewer, author_entry_belongs_to)
+
+        else:
+            context['is_visible'] = False
+
+        # markdown rendering
         if entry.content_type == 'text/markdown': 
             entry.content_rendered = markdown.markdown(entry.entry_text)
 
@@ -155,7 +167,6 @@ class DetailView(generic.DetailView):
         return context 
 
 def login_view(request):
-    print("Is user authenticated? " + str(request.user.is_authenticated))
     if request.user.is_authenticated:
         # if authenticated, redirect to index
         return redirect("/social_distribution")
@@ -205,10 +216,10 @@ def loginregister(request):
             # automatically register a new user, redirect for login
             try:
                 user = User.objects.create_user(username=username, password=password)
+                validate_create_author(username)
+                return render(request, 'login.html', {'message': 'Created new user ' + str(username)})
             except Exception as ex:
                 return render(request, 'login.html', {'message': str(ex)})
-            
-            return render(request, 'login.html', {'message': 'Created new user ' + str(username)})
 
         # the user exists, just the password was wrong
         return render(request, 'login.html', {'message': 'Invalid username or password'})
@@ -226,17 +237,13 @@ def editprofile(request):
 
     commentForm = ChangeProfileForm(request.data)
     if commentForm.is_valid():
-        # Get username and content from the form
-        name = commentForm.cleaned_data['name']
-        description = commentForm.cleaned_data['description']
-        picture = commentForm.cleaned_data['picture']
-        github = commentForm.cleaned_data['github']
-
-        author.name = name
-        author.description = description
-        author.picture = picture
-        author.github = github
-
+        author.name = commentForm.cleaned_data['name']
+        if commentForm.cleaned_data['description']:
+            author.description = commentForm.cleaned_data['description']
+        if commentForm.cleaned_data['picture']:
+            author.picture = commentForm.cleaned_data['picture']
+        if commentForm.cleaned_data['github']:
+            author.github = commentForm.cleaned_data['github']
         author.save()
         return redirect("/social_distribution")
     
@@ -326,6 +333,7 @@ def get_likes(request, object_id):
 @login_required
 @api_view(['POST'])
 def add_like_entry(request, entry_id):
+    get_object_or_404(TextEntry, id=entry_id, is_deleted=False)
     author = Author.objects.get(pk=request.user.username)
 
     liked_object = f"{request.scheme}://{request.get_host()}/social_distribution/entries/{entry_id}"
@@ -391,6 +399,8 @@ def follow_requests(request):
 
 @login_required
 def follow_author(request, username):
+    if request.method != 'POST':
+        return redirect("social_distribution:profile", username=username)
     current_author = Author.objects.get(pk=request.user.username)
     target_author = get_object_or_404(Author, pk=username)
 
@@ -407,10 +417,7 @@ def approve_follow(request, username):
     current_author = Author.objects.get(pk=request.user.username)
     follower_author = get_object_or_404(Author, pk=username)
 
-    follow = Follow.objects.get(
-        follower=follower_author,
-        following=current_author
-    )
+    follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
 
     follow.approved = True
     follow.save()
@@ -432,6 +439,8 @@ def reject_follow(request, username):
 
 @login_required
 def unfollow(request, username):
+    if request.method != 'POST':
+        return redirect("social_distribution:index")
     current_author = Author.objects.get(pk=request.user.username)
     target_author = get_object_or_404(Author, pk=username)
 
@@ -488,20 +497,32 @@ def friends(author1, author2):
 @login_required
 def friends_list(request):
     current_author = Author.objects.get(pk=request.user.username)
-    all_authors = Author.objects.exclude(url=current_author.url)
-    all_friends = []
+    
+    # authors who current_author follows
+    following_ids = Follow.objects.filter(
+        follower=current_author, approved=True
+    ).values_list('following_id', flat=True)
+    
+    # of those, who also follows current_author back
+    all_friends = Author.objects.filter(url__in=following_ids).filter(
+        following__following=current_author,
+        following__approved=True
+        ).distinct()
 
-    for i in all_authors:
-        if friends(current_author, i):
-            all_friends.append(i)
-    context = {
-        "friends_list": all_friends
-    }
-
-    return render(request, "social_distribution/friends_list.html", context)
+    return render(request, "social_distribution/friends_list.html", {"friends_list": all_friends})
 
 @api_view(['GET'])
 def get_comments(request, entry_id):
+    entry = get_object_or_404(TextEntry, id=entry_id, is_deleted=False)
+
+    if entry.visibility == "FRIENDS":
+        if not request.user.is_authenticated:
+            return Response("You must be logged in to view comments on friends-only entries.", status=403)
+        viewer = Author.objects.get(pk=request.user.username)
+        entry_author = Author.objects.get(pk=entry.belonging_url)
+        if viewer != entry_author and not friends(viewer, entry_author):
+            return Response("You are not friends with this author.", status=403)
+
     comments = Comment.objects.filter(entry__id=entry_id).order_by('-created_at')
     serializer = CommentSerializer(comments, many=True)
 
@@ -565,7 +586,7 @@ def entry_delete_response(request, username, entry_id):
         target_author = Author.objects.get(pk=username)
         entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
 
-        if request.user.is_authenticated == False or request.user.username is not username:
+        if not request.user.is_authenticated or request.user.username != username:
             return Response("You must be logged in with the correct user to delete entries." ,status=403)
 
         entry.is_deleted = True
@@ -580,7 +601,7 @@ def entry_put_response(request, username, entry_id):
         target_author = Author.objects.get(pk=username)
         entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
 
-        if request.user.is_authenticated == False or request.user.username is not username:
+        if not request.user.is_authenticated or request.user.username != username:
             return Response("You must be logged in with the correct user to edit entries." ,status=403)
 
         editentry(request, entry_id)
@@ -608,14 +629,18 @@ def public_get_entry(request, entry_id):
 
         # consider the case that the entry is friends only
         if entry.visibility == "FRIENDS":
-            if request.user.is_authenticated==False:
-                return Response("You must be logged in to access friends only entries." ,status=403)
+            if not request.user.is_authenticated:
+                return Response("You must be logged in to access friends only entries.", status=403)
+            viewer = Author.objects.get(pk=request.user.username)
+            entry_author = Author.objects.get(pk=entry.belonging_url)
+            if viewer != entry_author and not friends(viewer, entry_author):
+                return Response("You are not friends with this author.", status=403)
 
         serializer = EntrySerializer(entry)
         return Response(serializer.data)
     
     except TextEntry.DoesNotExist:
-        return Response("Entry does not exist." ,status=404)
+        return Response("Entry does not exist.", status=404)
 
 @api_view(['GET', 'POST'])
 def public_user_entries(request, username):
@@ -656,13 +681,16 @@ def public_user_entries(request, username):
                     serializer = EntrySerializer(entries, many=True)
                     return Response(serializer.data)
                 except Follow.DoesNotExist:
-                    return Response("You do not follow the target author.", 400)
+                    # fall back to returning public entries
+                    entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
+                    serializer = EntrySerializer(entries, many=True)
+                    return Response(serializer.data)
                 
     # handle post for creating an entry
     if request.method == "POST":
         if request.user.is_authenticated == False:
             return Response("You must be logged in to create an entry.", 403)
-        if request.user.username is not username:
+        if request.user.username != username:
             return Response("You must be logged in as the target user to create an entry.", 403)
         
         response = addentry(request)

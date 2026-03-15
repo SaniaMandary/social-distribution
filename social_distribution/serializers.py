@@ -1,5 +1,3 @@
-from webbrowser import get
-
 from rest_framework import serializers
 from .models import Like, TextEntry, Comment
 
