@@ -549,6 +549,12 @@ def get_comments(request, entry_id):
 @api_view(['POST'])
 def post_entry_comment(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id)
+    if entry.visibility == "FRIENDS":
+        viewer = Author.objects.get(pk=request.user.username)
+        entry_author = Author.objects.get(pk=entry.belonging_url)
+        if viewer != entry_author and not friends(viewer, entry_author):
+            return Response({"error": "You are not friends with this author."}, status=403)
+        
     author = Author.objects.get(pk=request.user.username)
     content = request.data.get("comment", "").strip()
     if not content:
