@@ -3,10 +3,16 @@ from django.db import models
 
 class Author(models.Model):
     url = models.CharField(primary_key=True)
+    host = models.CharField(max_length=500, blank=True, default='')
+    is_local = models.BooleanField(default=True)
     name = models.CharField(max_length=200)
     description = models.CharField(max_length=200, blank=True, default='')
     picture = models.CharField(max_length=200, blank=True, default='')
     github = models.CharField(max_length=200, blank=True, default='')
+
+    @property
+    def fqid(self):
+        return f"{self.host}/social_distribution/api/authors/{self.url}"
 
 class TextEntry(models.Model):
     CONTENT_TYPE_CHOICES = [

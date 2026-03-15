@@ -197,25 +197,23 @@ def changeprofile_view(request):
 
 def author_exists(username):
     return Author.objects.filter(url=username).exists()
-def validate_create_author(username):
-    # creates author with username if does not already exist
+def validate_create_author(username, node_host):
     if author_exists(username):
         return
-    
-    url = username # THIS DOES NOT CHECK FOR MALICIOUS USERNAMES (/ will fail)
-    author = Author(url=url, name = username)
+    author = Author(url=username, name=username, host=node_host, is_local=True)
     author.save()
-    pass
+    
 @api_view(['POST'])
 def loginregister(request):
     username = request.POST["username"]
     password = request.POST["password"]
+    node_host = f"{request.scheme}://{request.get_host()}"
     user = authenticate(request, username=username, password=password)
 
     # django recognizes the user
     if user is not None:
         login(request, user)
-        validate_create_author(username)
+        validate_create_author(username, node_host)
         return redirect("/social_distribution")
     # django does not recognize the user
     else:
@@ -223,7 +221,7 @@ def loginregister(request):
             # automatically register a new user, redirect for login
             try:
                 user = User.objects.create_user(username=username, password=password)
-                validate_create_author(username)
+                validate_create_author(username, node_host)
                 return render(request, 'login.html', {'message': 'Created new user ' + str(username)})
             except Exception as ex:
                 return render(request, 'login.html', {'message': str(ex)})
@@ -265,7 +263,7 @@ def addentry(request):
     mutable_request_data = request.data.copy()
     mutable_request_data['belonging_url'] = author.url
     mutable_request_data['content_type'] = request.data.get('content_type', 'text/plain')
-    serializer = EntrySerializer(data=mutable_request_data)
+    serializer = EntrySerializer(data=mutable_request_data, context={'request': request})
 
     # success
     if serializer.is_valid():
@@ -281,7 +279,7 @@ def get_entries(request):
     Get the list of entries on our node
     """
     entries = TextEntry.objects.filter(is_deleted=False)
-    serializer = EntrySerializer(entries, many=True)
+    serializer = EntrySerializer(entries, many=True, context={'request': request})
     return Response(serializer.data)
 
 @login_required
@@ -310,7 +308,7 @@ def editentry(request, entry_id):
         entry.visibility = new_visibility
     entry.save()
 
-    serializer = EntrySerializer(entry)
+    serializer = EntrySerializer(entry, context={'request': request})
     return Response(serializer.data, status=200)
 
 @login_required
@@ -323,13 +321,13 @@ def add_like(request):
         return Response({"error": "Missing object field"}, status=400)
 
     like = Like.objects.create(author=author, object=liked_object)
-    serializer = LikeSerializer(like)
+    serializer = LikeSerializer(like, context={'request': request})
     return Response(serializer.data)
 
 @api_view(['GET'])
 def get_likes(request, object_id):
     likes = Like.objects.filter(object=object_id).order_by('-published')
-    serializer = LikeSerializer(likes, many=True)
+    serializer = LikeSerializer(likes, many=True, context={'request': request})
 
     return Response({
         "type": "likes",
@@ -535,7 +533,7 @@ def get_comments(request, entry_id):
             return Response("You are not friends with this author.", status=403)
 
     comments = Comment.objects.filter(entry__id=entry_id).order_by('-created_at')
-    serializer = CommentSerializer(comments, many=True)
+    serializer = CommentSerializer(comments, many=True, context={'request': request})
 
     return Response({
         "type": "comments",
@@ -586,7 +584,7 @@ def entry_get_response(request, username, entry_id):
                 except Author.DoesNotExist:
                     return Response("Authenticated author does not exist." ,status=500)
 
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={'request': request})
         return Response(serializer.data)
     except TextEntry.DoesNotExist:
         return Response("Entry does not exist." ,status=404)
@@ -631,7 +629,7 @@ def entry_put_response(request, username, entry_id):
             entry.visibility = new_visibility
         entry.save()
 
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={'request': request})
         return Response(serializer.data, status=200)
     except TextEntry.DoesNotExist:
         return Response({"error": "Entry does not exist."}, status=404)
@@ -664,7 +662,7 @@ def public_get_entry(request, entry_id):
             if viewer != entry_author and not friends(viewer, entry_author):
                 return Response("You are not friends with this author.", status=403)
 
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={'request': request})
         return Response(serializer.data)
     
     except TextEntry.DoesNotExist:
@@ -683,14 +681,14 @@ def public_user_entries(request, username):
         # return all of the public entries for target user
         if request.user.is_authenticated==False:
             entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
-            serializer = EntrySerializer(entries, many=True)
+            serializer = EntrySerializer(entries, many=True, context={'request': request})
             return Response(serializer.data)
         # authenticated
         else:
             # return all your own entries
             if request.user.username == username:
                 entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False).order_by("-pub_date")
-                serializer = EntrySerializer(entries, many=True)
+                serializer = EntrySerializer(entries, many=True, context={'request': request})
                 return Response(serializer.data)
             else:
                 request_author = Author.objects.get(pk=request.user.username)
@@ -700,18 +698,18 @@ def public_user_entries(request, username):
                     # return all entries as a friend
                     if friends(target_author, request_author):
                         entries = TextEntry.objects.filter(belonging_url=username, is_deleted=False).order_by("-pub_date")
-                        serializer = EntrySerializer(entries, many=True)
+                        serializer = EntrySerializer(entries, many=True, context={'request': request})
                         return Response(serializer.data)
                     
                     # return public + unlisted as only a follower
                     entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False)
                     entries = entries.union(TextEntry.objects.filter(belonging_url=username, visibility="UNLISTED", is_deleted=False)).order_by("-pub_date")
-                    serializer = EntrySerializer(entries, many=True)
+                    serializer = EntrySerializer(entries, many=True, context={'request': request})
                     return Response(serializer.data)
                 except Follow.DoesNotExist:
                     # fall back to returning public entries
                     entries = TextEntry.objects.filter(belonging_url=username, visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
-                    serializer = EntrySerializer(entries, many=True)
+                    serializer = EntrySerializer(entries, many=True, context={'request': request})
                     return Response(serializer.data)
                 
     # handle post for creating an entry
@@ -743,7 +741,7 @@ def api_entry_detail(request, entry_id):
             entry_author = Author.objects.get(pk=entry.belonging_url)
             if viewer != entry_author and not friends(viewer, entry_author):
                 return Response({"error": "You are not friends with this author."}, status=403)
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={'request': request})
         return Response(serializer.data)
 
     if not request.user.is_authenticated:
@@ -766,7 +764,7 @@ def api_entry_detail(request, entry_id):
             entry.visibility = new_visibility
         entry.save()
 
-        serializer = EntrySerializer(entry)
+        serializer = EntrySerializer(entry, context={'request': request})
         return Response(serializer.data, status=200)
 
     if request.method == 'DELETE':
@@ -783,7 +781,7 @@ def api_authors(request):
     total = all_authors.count()
     start = (page_number - 1) * size
     end = start + size
-    serializer = AuthorSerializer(all_authors[start:end], many=True)
+    serializer = AuthorSerializer(all_authors[start:end], many=True, context={'request': request})
     return Response({
         "type": "authors",
         "page_number": page_number,
@@ -797,7 +795,7 @@ def api_authors(request):
 def api_author_followers(request, username):
     author = get_object_or_404(Author, pk=username)
     follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
-    serializer = AuthorSerializer([f.follower for f in follows], many=True)
+    serializer = AuthorSerializer([f.follower for f in follows], many=True, context={'request': request})
     return Response({"type": "followers", "followers": serializer.data})
 
 
@@ -805,7 +803,7 @@ def api_author_followers(request, username):
 def api_author_following(request, username):
     author = get_object_or_404(Author, pk=username)
     follows = Follow.objects.filter(follower=author, approved=True).select_related('following')
-    serializer = AuthorSerializer([f.following for f in follows], many=True)
+    serializer = AuthorSerializer([f.following for f in follows], many=True, context={'request': request})
     return Response({"type": "following", "following": serializer.data})
 
 #
