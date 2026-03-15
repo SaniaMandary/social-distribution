@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <title>Follow Requests</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/follow_requests.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/generic-page.css' %}">
 </head>
 <body>
     <h1>Follow Requests</h1>
@@ -28,5 +28,6 @@
     {% else %}
         <p>No pending follow requests.</p>
     {% endif %}
+    <a href="{% url 'social_distribution:index' %}">Back to Home</a>
 </body>
 </html>

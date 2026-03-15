@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <title>All Authors</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/author_list.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/generic-page.css' %}">
 </head>
 
 <body>
@@ -18,5 +18,7 @@
             <li>No authors yet.</li>
         {% endfor %}
     </ul>
+
+    <a href="{% url 'social_distribution:index' %}">Back to Home</a>
 </body>
 </html>

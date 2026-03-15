@@ -4,10 +4,10 @@
 <head>
     <meta charset="utf-8">
     <title>{{author}}'s Page</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/publicprofile.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/index.css' %}">
 </head>
 <body>
-    <nav>
+    <nav class="nav-bar">
         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
         <h1>{{author}}'s Page</h1>
     </nav>
@@ -29,17 +29,17 @@
     {% endif %}
 
     {% if latest_entry_list %}
-        <ul>
+        <ol class="entries">
         {% for entry in latest_entry_list %}
-            <li><a href="{% url 'social_distribution:detail' entry.id %}">
-                {% if entry.content_type == 'text/markdown' %}
-                    {{ entry.entry_text|truncatechars:50 }}
-                {% else %}
-                    {{ entry.entry_text }}
-                {% endif %}
-            </a></li>
+            <a href="{% url 'social_distribution:detail' entry.id %}" class='entry-card-link-wrapper'>
+                <section class="entry-card" style="border-left:5px solid rgb(61, 159, 184);">
+                    <p class="entry-card-author">{{entry.belonging_url}}</p>
+                    <p>{{entry.pub_date}}</p>
+                    <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                </section>
+            </a>
         {% endfor %}
-        </ul>
+        </ol>
     {% else %}
         <p>No entries are available.</p>
     {% endif %}
