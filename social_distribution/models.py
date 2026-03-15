@@ -5,6 +5,7 @@ class Author(models.Model):
     url = models.CharField(primary_key=True)
     host = models.CharField(max_length=500, blank=True, default='')
     is_local = models.BooleanField(default=True)
+    is_approved = models.BooleanField(default=False)
     name = models.CharField(max_length=200)
     description = models.CharField(max_length=200, blank=True, default='')
     picture = models.CharField(max_length=200, blank=True, default='')

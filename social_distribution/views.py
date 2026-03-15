@@ -210,23 +210,22 @@ def loginregister(request):
     node_host = f"{request.scheme}://{request.get_host()}"
     user = authenticate(request, username=username, password=password)
 
-    # django recognizes the user
     if user is not None:
-        login(request, user)
         validate_create_author(username, node_host)
+        author = Author.objects.get(pk=username)
+        if not author.is_approved:
+            return render(request, 'login.html', {'message': 'Your account is pending admin approval.'})
+        login(request, user)
         return redirect("/social_distribution")
-    # django does not recognize the user
     else:
         if not author_exists(username):
-            # automatically register a new user, redirect for login
             try:
                 user = User.objects.create_user(username=username, password=password)
                 validate_create_author(username, node_host)
-                return render(request, 'login.html', {'message': 'Created new user ' + str(username)})
+                return render(request, 'login.html', {'message': 'Account created for ' + str(username) + '. Waiting for admin approval.'})
             except Exception as ex:
                 return render(request, 'login.html', {'message': str(ex)})
 
-        # the user exists, just the password was wrong
         return render(request, 'login.html', {'message': 'Invalid username or password'})
 
 @login_required
