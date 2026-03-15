@@ -10,8 +10,6 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("newentry/",views.newentry_view,name="newentry"),
     path("changeprofile/",views.changeprofile_view,name="changeprofile"),
-    path("editentry/<int:entry_id>/", views.editentry, name="editentry"),
-    path("deleteentry/<int:entry_id>/", views.deleteentry, name="deleteentry"),
     
     path("api/editprofile/", views.editprofile,name="editprofile"),
     path("api/addentry/", views.addentry,name="addentry"),
@@ -27,20 +25,26 @@ urlpatterns = [
     path("unfollow/<str:username>/", views.unfollow, name="unfollow"),
     path("follow_requests/", views.follow_requests, name="follow_requests"),
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
-
-    path("authors/", views.author_list, name="author_list"),
-
-    path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
-    path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
-    path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"),
-
     path("reject_follow/<str:username>/", views.reject_follow, name="reject_follow"),
 
+    path("authors/", views.author_list, name="author_list"),
     path("followers/", views.followers_list, name="followers_list"),
     path("following/", views.following_list, name="following_list"),
     path("friends/", views.friends_list, name="friends_list"),
 
-    # Entries Public API
+    # Authors REST API
+    path("api/authors/", views.api_authors, name="api_authors"),
+    path("api/authors/<str:username>/followers/", views.api_author_followers, name="api_author_followers"),
+    path("api/authors/<str:username>/following/", views.api_author_following, name="api_author_following"),
+
+    # Entry REST API
+    path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
+    path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
+    path("api/entries/<int:entry_id>/", views.api_entry_detail, name="api_entry_detail"),
+
+    path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"),
+
+    # Author-scoped entry API
     path("api/authors/<str:username>/entries/<int:entry_id>", views.public_user_entry, name="public_user_entry"),
     path("api/entries/<int:entry_id>", views.public_get_entry, name="public_get_entry"),
     path("api/authors/<str:username>/entries/", views.public_user_entries, name="public_user_entries"),

@@ -236,36 +236,75 @@ document.addEventListener("DOMContentLoaded", () => {
 
     {% if request.user.username == entry.belonging_url %}
     <section> 
-        <form method="POST" action="{% url 'social_distribution:editentry' entry.id %}">
-            {% csrf_token %}
-            <label for="entry_text">Edit entry:</label><br>
-            <textarea id="edit_entry_text" name="entry_text" rows="4" cols="50">{{ entry.entry_text }}</textarea><br><br>
-            <label for="content_type">Content Type:</label><br>
-            <select id="edit_content_type" name="content_type">
-                <option value="text/plain" {% if entry.content_type == 'text/plain' %}selected{% endif %}>Plain Text</option>
-                <option value="text/markdown" {% if entry.content_type == 'text/markdown' %}selected{% endif %}>CommonMark (Markdown)</option>
-            </select><br><br>
+        <label for="entry_text">Edit entry:</label><br>
+        <textarea id="edit_entry_text" rows="4" cols="50">{{ entry.entry_text }}</textarea><br><br>
 
-            <label for="visibility">Visibility:</label><br>
-            <select id="edit_visibility" name="visibility">
-                <option value="PUBLIC" {% if entry.visibility == 'PUBLIC' %}selected{% endif %}>Public</option>
-                <option value="FRIENDS" {% if entry.visibility == 'FRIENDS' %}selected{% endif %}>Friends</option>
-                <option value="UNLISTED" {% if entry.visibility == 'UNLISTED' %}selected{% endif %}>Unlisted</option>
-            </select><br><br>
+        <label for="content_type">Content Type:</label><br>
+        <select id="edit_content_type">
+            <option value="text/plain" {% if entry.content_type == 'text/plain' %}selected{% endif %}>Plain Text</option>
+            <option value="text/markdown" {% if entry.content_type == 'text/markdown' %}selected{% endif %}>CommonMark (Markdown)</option>
+        </select><br><br>
 
-            <section id="edit-markdown-section" style="display:none;">
-                <button id="edit-convert-btn">Preview Markdown</button>
-                <h3>Output</h3>
-                <p id="edit-markdown-output"></p>
-            </section>
+        <label for="visibility">Visibility:</label><br>
+        <select id="edit_visibility">
+            <option value="PUBLIC" {% if entry.visibility == 'PUBLIC' %}selected{% endif %}>Public</option>
+            <option value="FRIENDS" {% if entry.visibility == 'FRIENDS' %}selected{% endif %}>Friends</option>
+            <option value="UNLISTED" {% if entry.visibility == 'UNLISTED' %}selected{% endif %}>Unlisted</option>
+        </select><br><br>
 
-            <input type="submit" value="Save Changes">
-        </form>
+        <section id="edit-markdown-section" style="display:none;">
+            <button id="edit-convert-btn">Preview Markdown</button>
+            <h3>Output</h3>
+            <p id="edit-markdown-output"></p>
+        </section>
 
-        <form method="POST" action="{% url 'social_distribution:deleteentry' entry.id %}">
-            {% csrf_token %}
-            <input type="submit" value="Delete">
-        </form>
+        <button id="save-edit-btn">Save Changes</button>
+        <button id="delete-entry-btn">Delete</button>
+
+        <script>
+        document.getElementById('save-edit-btn').addEventListener('click', function() {
+            fetch(`/social_distribution/api/entries/{{ entry.id }}/`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({
+                    entry_text: document.getElementById('edit_entry_text').value,
+                    content_type: document.getElementById('edit_content_type').value,
+                    visibility: document.getElementById('edit_visibility').value,
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    window.location.href = '/social_distribution/';
+                }
+            })
+            .catch(err => console.error('Edit failed:', err));
+        });
+
+        document.getElementById('delete-entry-btn').addEventListener('click', function() {
+            if (!confirm('Are you sure you want to delete this entry?')) return;
+            fetch(`/social_distribution/api/entries/{{ entry.id }}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    window.location.href = '/social_distribution/';
+                }
+            })
+            .catch(err => console.error('Delete failed:', err));
+        });
+        </script>
     </section>
     {% endif %}
 

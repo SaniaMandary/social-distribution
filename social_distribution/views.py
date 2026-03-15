@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from .forms import TextEntryForm
 from .models import Like, TextEntry, Author, Follow, Comment
 from .forms import ChangeProfileForm
-from .serializers import EntrySerializer, LikeSerializer, CommentSerializer
+from .serializers import EntrySerializer, AuthorSerializer, LikeSerializer, CommentSerializer
 
 # VIEWS
 
@@ -278,29 +278,33 @@ def get_entries(request):
     return Response(serializer.data)
 
 @login_required
-@api_view(['POST'])
+@api_view(['DELETE'])
 def deleteentry(request, entry_id):
-    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
+    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username, is_deleted=False)
     entry.is_deleted = True
     entry.save()
-    return redirect("/social_distribution")
+    return Response({"success": True, "message": "Entry deleted."}, status=200)
 
 @login_required
-@api_view(['POST'])
+@api_view(['PUT'])
 def editentry(request, entry_id):
-    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username)
+    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username, is_deleted=False)
     new_text = request.data.get('entry_text', '').strip()
     new_content_type = request.data.get('content_type', '').strip()
     new_visibility = request.data.get('visibility', '').strip()
-    if new_text:
-        entry.entry_text = new_text
-        if new_content_type in ['text/plain', 'text/markdown']:
-            entry.content_type = new_content_type
-        if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
-            entry.visibility = new_visibility
-        entry.save()
-        return redirect("/social_distribution")
-    return redirect("/social_distribution/editentry/" + str(entry_id))
+
+    if not new_text:
+        return Response({"error": "entry_text is required and cannot be empty."}, status=400)
+
+    entry.entry_text = new_text
+    if new_content_type in ['text/plain', 'text/markdown']:
+        entry.content_type = new_content_type
+    if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
+        entry.visibility = new_visibility
+    entry.save()
+
+    serializer = EntrySerializer(entry)
+    return Response(serializer.data, status=200)
 
 @login_required
 @api_view(['POST'])
@@ -581,35 +585,52 @@ def entry_get_response(request, username, entry_id):
         return Response("Entry does not exist." ,status=404)
     except Author.DoesNotExist:
         return Response("Author/user does not exist." ,status=404)
+
 def entry_delete_response(request, username, entry_id):
     try:
-        target_author = Author.objects.get(pk=username)
-        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
+        Author.objects.get(pk=username)
+        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username, is_deleted=False)
 
         if not request.user.is_authenticated or request.user.username != username:
-            return Response("You must be logged in with the correct user to delete entries." ,status=403)
+            return Response({"error": "You must be logged in as the entry owner to delete it."}, status=403)
 
         entry.is_deleted = True
         entry.save()
-        return Response("Entry deleted.", status=200)
+        return Response({"success": True, "message": "Entry deleted."}, status=200)
     except TextEntry.DoesNotExist:
-        return Response("Entry does not exist." ,status=404)
+        return Response({"error": "Entry does not exist."}, status=404)
     except Author.DoesNotExist:
-        return Response("Author/user does not exist." ,status=404)
+        return Response({"error": "Author does not exist."}, status=404)
+    
 def entry_put_response(request, username, entry_id):
     try:
-        target_author = Author.objects.get(pk=username)
-        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username)
+        Author.objects.get(pk=username)
+        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username, is_deleted=False)
 
         if not request.user.is_authenticated or request.user.username != username:
-            return Response("You must be logged in with the correct user to edit entries." ,status=403)
+            return Response({"error": "You must be logged in as the entry owner to edit it."}, status=403)
 
-        editentry(request, entry_id)
-        return Response("Entry edited." ,status=200)
+        new_text = request.data.get('entry_text', '').strip()
+        new_content_type = request.data.get('content_type', '').strip()
+        new_visibility = request.data.get('visibility', '').strip()
+
+        if not new_text:
+            return Response({"error": "entry_text is required and cannot be empty."}, status=400)
+
+        entry.entry_text = new_text
+        if new_content_type in ['text/plain', 'text/markdown']:
+            entry.content_type = new_content_type
+        if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
+            entry.visibility = new_visibility
+        entry.save()
+
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data, status=200)
     except TextEntry.DoesNotExist:
-        return Response("Entry does not exist." ,status=404)
+        return Response({"error": "Entry does not exist."}, status=404)
     except Author.DoesNotExist:
-        return Response("Author/user does not exist." ,status=404)
+        return Response({"error": "Author does not exist."}, status=404)
+    
 @api_view(['GET', 'DELETE', 'PUT'])
 def public_user_entry(request, username, entry_id):
     # handle the get delete and put request for entries
@@ -697,4 +718,87 @@ def public_user_entries(request, username):
         return Response("Added entry.", response.status_code)
 
     pass
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def api_entry_detail(request, entry_id):
+    """
+    GET    /api/entries/{entry_id}/  - retrieve a single entry (respects visibility)
+    PUT    /api/entries/{entry_id}/  - update entry (owner only)
+    DELETE /api/entries/{entry_id}/  - soft-delete entry (owner only)
+    """
+    entry = get_object_or_404(TextEntry, id=entry_id, is_deleted=False)
+
+    if request.method == 'GET':
+        if entry.visibility == 'FRIENDS':
+            if not request.user.is_authenticated:
+                return Response({"error": "Authentication required to view a friends-only entry."}, status=403)
+            viewer = Author.objects.get(pk=request.user.username)
+            entry_author = Author.objects.get(pk=entry.belonging_url)
+            if viewer != entry_author and not friends(viewer, entry_author):
+                return Response({"error": "You are not friends with this author."}, status=403)
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data)
+
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required."}, status=403)
+    if request.user.username != entry.belonging_url:
+        return Response({"error": "You do not own this entry."}, status=403)
+
+    if request.method == 'PUT':
+        new_text = request.data.get('entry_text', '').strip()
+        new_content_type = request.data.get('content_type', '').strip()
+        new_visibility = request.data.get('visibility', '').strip()
+
+        if not new_text:
+            return Response({"error": "entry_text is required and cannot be empty."}, status=400)
+
+        entry.entry_text = new_text
+        if new_content_type in ['text/plain', 'text/markdown']:
+            entry.content_type = new_content_type
+        if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
+            entry.visibility = new_visibility
+        entry.save()
+
+        serializer = EntrySerializer(entry)
+        return Response(serializer.data, status=200)
+
+    if request.method == 'DELETE':
+        entry.is_deleted = True
+        entry.save()
+        return Response({"success": True, "message": "Entry deleted."}, status=200)
+
+
+@api_view(['GET'])
+def api_authors(request):
+    page_number = int(request.query_params.get('page', 1))
+    size = int(request.query_params.get('size', 10))
+    all_authors = Author.objects.all().order_by('url')
+    total = all_authors.count()
+    start = (page_number - 1) * size
+    end = start + size
+    serializer = AuthorSerializer(all_authors[start:end], many=True)
+    return Response({
+        "type": "authors",
+        "page_number": page_number,
+        "size": size,
+        "count": total,
+        "authors": serializer.data
+    })
+
+
+@api_view(['GET'])
+def api_author_followers(request, username):
+    author = get_object_or_404(Author, pk=username)
+    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    serializer = AuthorSerializer([f.follower for f in follows], many=True)
+    return Response({"type": "followers", "followers": serializer.data})
+
+
+@api_view(['GET'])
+def api_author_following(request, username):
+    author = get_object_or_404(Author, pk=username)
+    follows = Follow.objects.filter(follower=author, approved=True).select_related('following')
+    serializer = AuthorSerializer([f.following for f in follows], many=True)
+    return Response({"type": "following", "following": serializer.data})
+
 #
