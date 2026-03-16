@@ -815,7 +815,7 @@ def api_author_following(request, username):
 
 #
 
-def fetch_github_entries(request, username): 
+def fetch_github_entries(author): 
     if not author.github: 
         return 
     
