@@ -23,41 +23,65 @@ def index(request):
         # authenticated personal page view
         author = Author.objects.get(pk=request.user.username)
 
-        entries = TextEntry.objects.filter(belonging_url=request.user.username, is_deleted=False).order_by("-pub_date")
+        # author's own entries
+        entries = TextEntry.objects.filter(
+            belonging_url=request.user.username,
+            is_deleted=False
+        ).order_by("-pub_date")
 
-        # populate stream to see content of who you are following and your friends entries
+        # stream: entries from authors you follow
         followfriends_entries = None
-        people_you_follow = Follow.objects.filter(follower=author, approved=True).order_by("-created_at")
+        people_you_follow = Follow.objects.filter(follower=author, approved=True)
+
         for follow in people_you_follow:
             following_author = follow.following
 
-            # aggregate the entries that should we should see by following someone
-            following_entries = TextEntry.objects.filter(belonging_url=following_author.url, visibility="PUBLIC", is_deleted=False)
+            # everyone you follow: public entries
+            following_entries = TextEntry.objects.filter(
+                belonging_url=following_author.url,
+                visibility="PUBLIC",
+                is_deleted=False
+            )
+            # everyone you follow: unlisted entries
+            following_entries = following_entries.union(
+                TextEntry.objects.filter(
+                    belonging_url=following_author.url,
+                    visibility="UNLISTED",
+                    is_deleted=False
+                )
+            )
+            # friends only: friends-only entries
             if friends(author, following_author):
-                following_entries_friends = TextEntry.objects.filter(belonging_url=following_author.url, visibility="FRIENDS", is_deleted=False)
-                following_entries = following_entries.union(following_entries_friends)
-            following_entries_unlisted = TextEntry.objects.filter(belonging_url=following_author.url, visibility="UNLISTED", is_deleted=False)
-            following_entries = following_entries.union(following_entries_unlisted)
+                following_entries = following_entries.union(
+                    TextEntry.objects.filter(
+                        belonging_url=following_author.url,
+                        visibility="FRIENDS",
+                        is_deleted=False
+                    )
+                )
 
-            if followfriends_entries == None:
+            if followfriends_entries is None:
                 followfriends_entries = following_entries
             else:
                 followfriends_entries = followfriends_entries.union(following_entries)
 
-        # all public entries
-        followfriends_entries = followfriends_entries.order_by("-pub_date")
-        public_entries = TextEntry.objects.filter(visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
+        if followfriends_entries is not None:
+            followfriends_entries = followfriends_entries.order_by("-pub_date")
 
-        entries_dictionary = {
-            'latest_entry_list' : entries,
-            'following_entry_stream' : None if followfriends_entries is None else followfriends_entries,
-            'all_public_entries' : public_entries,
-            'author' : author.name,
-            'picture_url' : author.picture,
-            'public_url' : author.url,
-            }
+        # all public entries on the node
+        public_entries = TextEntry.objects.filter(
+            visibility="PUBLIC",
+            is_deleted=False
+        ).order_by("-pub_date")
 
-        return render(request, "social_distribution/index.html", entries_dictionary)
+        return render(request, "social_distribution/index.html", {
+            'latest_entry_list': entries,
+            'following_entry_stream': followfriends_entries,
+            'all_public_entries': public_entries,
+            'author': author.name,
+            'picture_url': author.picture,
+            'public_url': author.url,
+        })
     else:
         # redirect for login
         return redirect('/social_distribution/login')
@@ -846,7 +870,7 @@ def fetch_github_entries(author):
              return
         events = response.json()
         logger.info(f"Fetched {len(events)} events for {github_username}")
-    except Exception:
+    except Exception as e:
         logger.error(f"GitHub fetch failed: {e}")
         return
 
