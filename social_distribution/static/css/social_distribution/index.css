@@ -11,6 +11,8 @@ html {
 html>body {
     padding: 10px; 
     margin: 0 auto;
+    min-width: 600px;
+    width: 100%;
     background: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 90%, rgba(199, 244, 255, 1) 100%);
     background-repeat: no-repeat;
     background-attachment: fixed; /** https://stackoverflow.com/questions/34108433/html-css-linear-gradient-not-taking-up-full-screen **/
@@ -179,4 +181,12 @@ input{
 .entry-peek-tab:active {
     cursor: grabbing;
     background: #666;
+}
+
+.entries-container {
+    min-width: 100%;
+}
+
+.entries-filterable {
+    width: 100%;
 }

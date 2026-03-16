@@ -3,6 +3,7 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{author}}'s Page</title>
     <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/index.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/github-entries.css' %}">
@@ -30,13 +31,12 @@
     {% endif %}
 
     {% if latest_entry_list %}
+    <div class="entries-filterable"> 
         <nav class="entry-filter-button">
-            <nav class="entry-filter-button">
-                <button class="view-toggle" title="Toggle grid view">
-                    <svg class="icon-grid" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z"/></svg>
-                    <svg class="icon-list" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1 2h14v2H1zM1 7h14v2H1zM1 12h14v2H1z"/></svg>
-                </button>
-                <nav class="entry-filter-button-options">
+            <button class="view-toggle" title="Toggle grid view">
+                <svg class="icon-grid" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z"/></svg>
+                <svg class="icon-list" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M1 2h14v2H1zM1 7h14v2H1zM1 12h14v2H1z"/></svg>
+            </button>
                 <nav class="entry-filter-button-options">
                     <button data-filter="all" class="active">All</button>
                     <button data-filter="native">Posts</button>
