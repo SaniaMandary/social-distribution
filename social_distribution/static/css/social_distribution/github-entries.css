@@ -1,0 +1,218 @@
+/* ── GitHub entry card styling ── */
+ 
+.entry-card.github-entry {
+    background: linear-gradient(135deg, #f6f8fa 0%, #eef1f5 100%);
+    border-left: 5px solid #238636 !important;
+    position: relative;
+}
+ 
+.entry-card.github-entry::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23238636'%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.6;
+}
+
+.entry-card.github-entry .entry-card-author {
+    color: #238636;
+    font-weight: 600;
+}
+
+.entry-filter-button {
+    display: inline-flex; 
+    align-items: center;
+    margin-bottom: 12px;
+    border-radius: 24px;
+    background: #fff;
+    border: 1.5px solid #d0d7de;
+    overflow: hidden;
+    transition: box-shadow 0.25s ease;
+}
+
+.entry-filter-button.fab-open {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.entry-filter-button-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+ 
+
+.entry-filter-button-toggle:hover {
+    background: #f6f8fa;
+}
+ 
+.entry-filter-button.fab-open .entry-filter-button-toggle {
+    background: #24292f;
+    color: #fff;
+}
+ 
+.entry-filter-button-toggle svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    transition: transform 0.25s ease;
+}
+ 
+.entry-filter-button.fab-open .entry-filter-button-toggle svg {
+    transform: rotate(180deg);
+}
+
+.entry-filter-button-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #eef1f5;
+    color: #333;
+    white-space: nowrap;
+    margin-right: 6px;
+    transition: max-width 0.2s ease, opacity 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+}
+ 
+.entry-filter-button.fab-open .entry-filter-button-label {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+ 
+.entry-filter-button-label.label-github {
+    background: #dcfce7;
+    color: #166534;
+}
+ 
+
+entry-filter-button-tray {
+    display: flex;
+    align-items: center;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease;
+}
+ 
+.entry-filter-button.fab-open .entry-filter-button-tray {
+    max-width: 600px;
+    opacity: 1;
+}
+ 
+
+.entry-filter-button-divider {
+    width: 1px;
+    height: 20px;
+    background: #d0d7de;
+    flex-shrink: 0;
+    margin: 0 4px;
+}
+ 
+/* Option groups */
+.entry-filter-button-options {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 4px;
+}
+ 
+.entry-filter-button-suboptions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease,
+                padding 0.3s ease;
+}
+ 
+.entry-filter-button-suboptions.sub-open {
+    max-width: 350px;
+    opacity: 1;
+    padding: 0 4px;
+}
+ 
+/* Divider before suboptions */
+.entry-filter-button-subdiv {
+    width: 1px;
+    height: 20px;
+    background: #d0d7de;
+    flex-shrink: 0;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-width 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
+    margin: 0;
+}
+ 
+.entry-filter-button-suboptions.sub-open + .entry-filter-button-subdiv,
+.entry-filter-button-subdiv.sub-open {
+    max-width: 2px;
+    opacity: 1;
+    margin: 0 4px;
+}
+ 
+/* All option buttons */
+.entry-filter-button-options button,
+.entry-filter-button-suboptions button {
+    padding: 5px 12px;
+    border: none;
+    border-radius: 16px;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+ 
+.entry-filter-button-options button:hover,
+.entry-filter-button-suboptions button:hover {
+    background: #f0f2f5;
+}
+ 
+.entry-filter-button-options button.active,
+.entry-filter-button-suboptions button.active {
+    background: #24292f;
+    color: #fff;
+}
+ 
+.entry-filter-button-options button.active-github {
+    background: #238636;
+    color: #fff;
+}
+ 
+/* ── Hide/show entries ── */
+ 
+.entries-container.filter-native .entry-item-github,
+.entries-container.filter-github .entry-item-native {
+    display: none;
+}
+ 
+.entries-container.subfilter-PUBLIC .entry-item-native:not([data-visibility="PUBLIC"]),
+.entries-container.subfilter-FRIENDS .entry-item-native:not([data-visibility="FRIENDS"]),
+.entries-container.subfilter-UNLISTED .entry-item-native:not([data-visibility="UNLISTED"]) {
+    display: none;
+}
