@@ -48,5 +48,6 @@ urlpatterns = [
     path("api/authors/<str:username>/entries/<int:entry_id>", views.public_user_entry, name="public_user_entry"),
     path("api/entries/<int:entry_id>", views.public_get_entry, name="public_get_entry"),
     path("api/authors/<str:username>/entries/", views.public_user_entries, name="public_user_entries"),
+    path("api/authors/<str:username>/entries/<int:entry_id>/image", views.get_entry_image, name="get_entry_image"),
     # 
 ]
