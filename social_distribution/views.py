@@ -1,5 +1,6 @@
 from django.utils import timezone
 import markdown
+import requests as http_requests
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import generic
 from django.db.models import Q
@@ -60,6 +61,7 @@ def index(request):
 
 def profile_view(request, username):
     author = get_object_or_404(Author, pk=username)
+    fetch_github_entries(author) 
 
     current_author = None
     if request.user.is_authenticated:
@@ -812,3 +814,92 @@ def api_author_following(request, username):
     return Response({"type": "following", "following": serializer.data})
 
 #
+
+def fetch_github_entries(request, username): 
+    if not author.github: 
+        return 
+    
+    github_username = author.github.rstrip('/').split('/')[-1]
+    if not github_username:
+        return
+    
+    try:
+        response = http_requests.get(
+            f"https://api.github.com/users/{github_username}/events/public",
+            timeout=5,
+            headers={"Accept": "application/vnd.github+json"}
+        )
+        if response.status_code != 200:
+            return
+        events = response.json()
+    except Exception:
+        return
+
+    last_polled = author.github_last_polled
+    new_entries = []
+
+    for event in events:
+        # parse the event timestamp
+        try:
+            from datetime import datetime
+            event_time = datetime.strptime(
+                event.get("created_at", ""), "%Y-%m-%dT%H:%M:%SZ"
+            ).replace(tzinfo=timezone.utc)
+        except Exception:
+            continue
+        
+        if last_polled and event_time <= last_polled:
+            continue
+
+        event_type = event.get("type", "")
+        repo_name = event.get("repo", {}).get("name", "unknown/repo")
+        payload = event.get("payload", {})
+        
+        if event_type == "PushEvent":
+            commits = payload.get("commits", [])
+            messages = [c.get("message", "") for c in commits[:3]]
+            description = f"Pushed {len(commits)} commit(s) to [{repo_name}](https://github.com/{repo_name}):\n"
+            description += "\n".join(f"- {m}" for m in messages)
+
+        elif event_type == "CreateEvent":
+            ref_type = payload.get("ref_type", "repository")
+            ref = payload.get("ref", "")
+            description = f"Created {ref_type} `{ref}` in [{repo_name}](https://github.com/{repo_name})"
+
+        elif event_type == "IssuesEvent":
+            action = payload.get("action", "")
+            issue = payload.get("issue", {})
+            title = issue.get("title", "")
+            issue_url = issue.get("html_url", "")
+            description = f"{action.capitalize()} issue [{title}]({issue_url}) in [{repo_name}](https://github.com/{repo_name})"
+
+        elif event_type == "PullRequestEvent":
+            action = payload.get("action", "")
+            pr = payload.get("pull_request", {})
+            title = pr.get("title", "")
+            pr_url = pr.get("html_url", "")
+            description = f"{action.capitalize()} pull request [{title}]({pr_url}) in [{repo_name}](https://github.com/{repo_name})"
+
+        elif event_type == "WatchEvent":
+            description = f"Starred [{repo_name}](https://github.com/{repo_name}) ⭐"
+
+        elif event_type == "ForkEvent":
+            forkee = payload.get("forkee", {}).get("full_name", "")
+            description = f"Forked [{repo_name}](https://github.com/{repo_name}) → [{forkee}](https://github.com/{forkee})"
+
+        else: 
+            continue 
+        
+        new_entries.append(TextEntry(
+            belonging_url=author.url,
+            entry_text=description,
+            content_type='text/markdown',
+            visibility='PUBLIC',
+            pub_date=event_time,
+        ))
+
+    if new_entries:
+        TextEntry.objects.bulk_create(new_entries)
+
+    author.github_last_polled = timezone.now()
+    author.save(update_fields=['github_last_polled'])

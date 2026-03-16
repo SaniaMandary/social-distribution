@@ -10,6 +10,7 @@ class Author(models.Model):
     description = models.CharField(max_length=200, blank=True, default='')
     picture = models.CharField(max_length=200, blank=True, default='')
     github = models.CharField(max_length=200, blank=True, default='')
+    github_last_polled = models.DateTimeField(null=True, blank=True)
 
     @property
     def fqid(self):
