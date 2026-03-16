@@ -253,3 +253,49 @@ class EntryVisibilityTests(TestCase):
         returned_ids = [e["id"] for e in response.json()]
         self.assertNotIn(deleted_entry.pk, returned_ids)
 
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp()
+
+@override_settings(MEDIA_ROOT = TEMP_MEDIA_ROOT)
+class ImageEntryTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user, self.author = make_user_and_author()
+        self.author.host = "http://testserver"
+        self.author.is_local = True
+        self.author.is_approved = True
+        self.author.save()
+        self.client.login(username="testuser", password="testpass123")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        super().tearDownClass()
+
+    def test_author_image_entry(self):
+        image_file = SimpleUploadedFile("test.jpg",
+        (b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+        b"\xff\xdb\x00C\x00" + b"\x08" * 64 +
+        b"\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01"
+        b"\xff\xc4\x00\x14\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08"
+        b"\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        b"\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00\x3f\x00\xd2\xcf\x20\xff\xd9"), 
+        content_type="image/jpeg")
+
+        response = self.client.post(
+            reverse("social_distribution:addentry"),
+            {
+                "entry_text":"",
+                "content_type": "image/jpeg",
+                "visibility": "PUBLIC",
+                "image": image_file,
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        entry = TextEntry.objects.latest("id")
+        self.assertEqual(entry.content_type, "image/jpeg")
+        self.assertEqual(entry.visibility, "PUBLIC")
+        self.assertTrue(bool(entry.image))
+            
