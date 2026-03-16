@@ -189,6 +189,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     {% if entry.image %}
         <img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 400px; max-height: 400px;">
+        <p>
+            <small>Image URL for markdown: 
+                <code>{{ request.scheme }}://{{ request.get_host }}/social_distribution/api/authors/{{ entry.belonging_url }}/entries/{{ entry.id }}/image</code>
+            </small>
+        </p>
     {% endif %}
   
 

@@ -14,6 +14,7 @@ from .forms import TextEntryForm
 from .models import Like, TextEntry, Author, Follow, Comment
 from .forms import ChangeProfileForm
 from .serializers import EntrySerializer, AuthorSerializer, LikeSerializer, CommentSerializer
+from django.http import FileResponse
 
 # VIEWS
 logger = logging.getLogger(__name__)
@@ -846,6 +847,25 @@ def api_author_following(request, username):
     follows = Follow.objects.filter(follower=author, approved=True).select_related('following')
     serializer = AuthorSerializer([f.following for f in follows], many=True, context={'request': request})
     return Response({"type": "following", "following": serializer.data})
+
+@api_view(['GET'])
+def get_entry_image(request, username, entry_id):
+    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=username, is_deleted=False)
+
+    # return 404 if this entry is not an image
+    if not entry.image:
+        return Response({"error": "This entry does not have an image."}, status=404)
+
+    # friends-only image entries require authentication and friendship
+    if entry.visibility == "FRIENDS":
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required."}, status=403)
+        viewer = Author.objects.get(pk=request.user.username)
+        entry_author = Author.objects.get(pk=username)
+        if viewer != entry_author and not friends(viewer, entry_author):
+            return Response({"error": "You are not friends with this author."}, status=403)
+        
+    return FileResponse(entry.image.open('rb'), content_type=entry.content_type)
 
 #
 
