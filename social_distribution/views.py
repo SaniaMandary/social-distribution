@@ -1,5 +1,6 @@
 from django.utils import timezone
 import markdown
+import logging
 import requests as http_requests
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import generic
@@ -15,6 +16,7 @@ from .forms import ChangeProfileForm
 from .serializers import EntrySerializer, AuthorSerializer, LikeSerializer, CommentSerializer
 
 # VIEWS
+logger = logging.getLogger(__name__)
 
 def index(request):
     if request.user.is_authenticated:
@@ -817,10 +819,12 @@ def api_author_following(request, username):
 
 def fetch_github_entries(author): 
     if not author.github: 
+        logger.warning(f"No github URL for {author.url}")
         return 
     
     github_username = author.github.rstrip('/').split('/')[-1]
     if not github_username:
+        logger.warning(f"Could not parse github username from: {author.github}")
         return
     
     try:
@@ -830,9 +834,12 @@ def fetch_github_entries(author):
             headers={"Accept": "application/vnd.github+json"}
         )
         if response.status_code != 200:
-            return
+             logger.warning(f"GitHub API returned {response.status_code} for {github_username}")
+             return
         events = response.json()
+        logger.info(f"Fetched {len(events)} events for {github_username}")
     except Exception:
+        logger.error(f"GitHub fetch failed: {e}")
         return
 
     last_polled = author.github_last_polled
@@ -841,10 +848,10 @@ def fetch_github_entries(author):
     for event in events:
         # parse the event timestamp
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone as dt_tz
             event_time = datetime.strptime(
                 event.get("created_at", ""), "%Y-%m-%dT%H:%M:%SZ"
-            ).replace(tzinfo=timezone.utc)
+            ).replace(tzinfo=dt_tz.utc)
         except Exception:
             continue
         
