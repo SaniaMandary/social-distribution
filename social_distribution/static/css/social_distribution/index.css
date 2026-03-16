@@ -62,11 +62,34 @@ input{
     color: #000000;
 }
 .entry-card {
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:10px;
+    max-height: 120px;
+    overflow: hidden;
+    position: relative;
     box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    transition: max-height 0.3s ease;
 }
+
+.entry-card.entry-expanded {
+    max-height: 800px;
+}
+
+/*-- When content is clipped make it fade away */
+.entry-card:not(.entry-expanded)::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, #fff);
+    pointer-events: none;
+}
+
+.entry-card.github-entry:not(.entry-expanded)::after {
+    background: linear-gradient(transparent, #eef1f5);
+}
+
+
 .entry-card>p {
     margin: 0px;
 }
@@ -77,4 +100,84 @@ input{
 }
 .entry-card-entrytext {
     margin-top: 10px;
+}
+
+/*- grid view options -*/
+
+.view-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #999;
+    transition: color 0.15s ease;
+}
+
+.view-toggle:hover {
+    color: #333;
+}
+
+.view-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    display: block;
+}
+
+.view-toggle .icon-list {
+    display: none;
+}
+
+.view-toggle.grid-active .icon-grid {
+    display: none;
+}
+
+.view-toggle.grid-active .icon-list {
+    display: block;
+}
+
+
+.entries.grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+
+.entries.grid-view .entry-card {
+    margin: 0;
+}
+
+.entries.grid-view .entry-card-link-wrapper {
+    margin: 0;
+    padding: 0;
+}
+
+/*-Peek at an entry */
+
+.entry-peek-tab {
+    display: block;
+    width: 40px;
+    height: 6px;
+    margin: 0 auto;
+    border: none;
+    border-radius: 3px;
+    background: #d0d7de;
+    cursor: grab;
+    position: relative;
+    z-index: 2;
+    transition: background 0.15s ease;
+}
+
+.entry-peek-tab:hover {
+    background: #999;
+    hint
+}
+
+.entry-peek-tab:active {
+    cursor: grabbing;
+    background: #666;
 }

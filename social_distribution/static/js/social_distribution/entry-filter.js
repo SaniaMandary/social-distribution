@@ -4,7 +4,6 @@
 function initEntryFilter(containerSelector) {
     document.querySelectorAll(containerSelector).forEach(container => {
         var fab = container.querySelector('.entry-filter-button'); 
-        var slidingTray = container.querySelector('.entry-filter-button-tray');
         var opts = container.querySelector('.entry-filter-button-options');
         var subopts = container.querySelector('.entry-filter-button-suboptions'); 
         var entryList = container.querySelector('.entries');
@@ -15,8 +14,6 @@ function initEntryFilter(containerSelector) {
         var currentFilter = 'all'; 
         var currentSubfilter = 'all'; 
 
-
-        // Listen for the toggle button
        
         opts.querySelectorAll('button').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
@@ -87,4 +84,31 @@ function initEntryFilter(containerSelector) {
  
     });
 }
+
+function initViewToggle(containerSelector) {
+    document.querySelectorAll(containerSelector).forEach(function(container) {
+        var btn = container.querySelector('.view-toggle');
+        var list = container.querySelector('.entries');
+
+        if (!btn || !list) return;
+
+        btn.addEventListener('click', function() {
+            btn.classList.toggle('grid-active');
+            list.classList.toggle('grid-view');
+        });
+    });
+}
  
+
+function initPeekTabs() {
+    document.querySelectorAll('.entry-peek-tab').forEach(function(tab) {
+        var card = tab.closest('.entry-card-link-wrapper').querySelector('.entry-card');
+        if (!card) return;
+
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            card.classList.toggle('entry-expanded');
+        });
+    });
+}
