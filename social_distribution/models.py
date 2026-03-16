@@ -22,6 +22,11 @@ class TextEntry(models.Model):
         ('text/markdown', 'CommonMark'),
     ]
 
+    SOURCE_TYPE = [
+        ('native', 'Native'), 
+        ('github', 'GitHub'), 
+    ]
+
     VISIBILITY_CHOICES = [
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends'),
@@ -37,6 +42,13 @@ class TextEntry(models.Model):
         choices=CONTENT_TYPE_CHOICES,
         default='text/plain'
     )
+
+    source_type = models.CharField(
+        max_length=20, 
+        choices=SOURCE_CHOICES, 
+        default='native'
+    )
+
     visibility = models.CharField(
         max_length=20,
         choices=VISIBILITY_CHOICES,
