@@ -8,7 +8,7 @@
 </head>
 <body>
     <h1>New Entry</h1>
-    <form method="POST" action="{% url 'social_distribution:addentry' %}">
+    <form method="POST" action="{% url 'social_distribution:addentry' %}" enctype="multipart/form-data">
         {% csrf_token %}
 
          <label for="content_type">Content Type:</label><br>
@@ -19,6 +19,9 @@
 
         <label for="entry_text">Entry:</label><br>
          {{ form.entry_text }}<br><br>
+
+         <label for="image">Image:</label><br>
+         {{ form.image }}<br><br>
 
         <section id="markdown-section" style="display:none;"> 
             <button id="switch-btn">Preview Markdown</button>

@@ -48,9 +48,9 @@ def index(request):
         public_entries = TextEntry.objects.filter(visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
 
         entries_dictionary = {
-            'latest_entry_list' : entries.values(),
-            'following_entry_stream' : None if followfriends_entries is None else followfriends_entries.values(),
-            'all_public_entries' : public_entries.values(),
+            'latest_entry_list' : entries,
+            'following_entry_stream' : None if followfriends_entries is None else followfriends_entries,
+            'all_public_entries' : public_entries,
             'author' : author.name,
             'picture_url' : author.picture,
             'public_url' : author.url,
@@ -101,7 +101,7 @@ def profile_view(request, username):
             ).exists()
 
     entries_dictionary = {
-        'latest_entry_list' : entries.values(),
+        'latest_entry_list' : entries,
         'author' : author.name,
         'author_username': author.url,
         'picture_url' : author.picture,
@@ -262,11 +262,18 @@ def editprofile(request):
 def addentry(request):
     author = Author.objects.get(pk=request.user.username)
 
-    # add additional data before serialization
-    mutable_request_data = request.data.copy()
-    mutable_request_data['belonging_url'] = author.url
-    mutable_request_data['content_type'] = request.data.get('content_type', 'text/plain')
-    serializer = EntrySerializer(data=mutable_request_data, context={'request': request})
+    data = {'belonging_url': author.url,
+            'entry_text': request.data.get('entry_text',''),
+            'content_type': request.data.get('content_type','text/plain'),
+            'visibility': request.data.get('visibility', 'PUBLIC'),
+            'source_type': 'native',   
+        }
+    
+    if 'image' in request.FILES:
+        data['image'] = request.FILES['image']
+
+
+    serializer = EntrySerializer(data=data, context={'request': request})
 
     # success
     if serializer.is_valid():

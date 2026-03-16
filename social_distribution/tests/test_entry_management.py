@@ -5,11 +5,15 @@ Tests for entry management user stories:
 - As an author, I want to delete my own entries locally.
 - As an author, entries I create should always be visible to me until they are deleted.
 - As a node admin, I want deleted entries to stay in the database and only be removed from the UI and API.
+-As an author, entries I create can be images, so that I can share pictures and drawings.
 """
 
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
+import tempfile
+import shutil
 
 from social_distribution.models import TextEntry, Author
 
@@ -37,7 +41,7 @@ def make_entry(author, text="Hello world", visibility="PUBLIC", is_deleted=False
 def get_entry_ids(response, context_key="latest_entry_list"):
     """Extract entry IDs from a response context list."""
     entries = list(response.context.get(context_key) or [])
-    return [e["id"] for e in entries]
+    return [e.id for e in entries]
 
 class DeleteEntryTests(TestCase):
     """
@@ -54,7 +58,7 @@ class DeleteEntryTests(TestCase):
     def test_author_can_soft_delete_own_entry(self):
         """POSTing to deleteentry marks is_deleted=True instead of removing the row."""
         url = reverse("social_distribution:deleteentry", args=[self.entry.pk])
-        self.client.post(url)
+        self.client.delete(url)
 
         self.entry.refresh_from_db()
         self.assertTrue(
@@ -66,7 +70,7 @@ class DeleteEntryTests(TestCase):
         """Unauthenticated users cannot delete entries."""
         self.client.logout()
         url = reverse("social_distribution:deleteentry", args=[self.entry.pk])
-        self.client.post(url)
+        self.client.delete(url)
 
         self.entry.refresh_from_db()
         self.assertFalse(self.entry.is_deleted)
@@ -77,7 +81,7 @@ class DeleteEntryTests(TestCase):
         other_entry = make_entry(other_author, text="Other's post")
 
         url = reverse("social_distribution:deleteentry", args=[other_entry.pk])
-        response = self.client.post(url)
+        response = self.client.delete(url)
 
         self.assertEqual(response.status_code, 404)
         other_entry.refresh_from_db()
@@ -248,3 +252,4 @@ class EntryVisibilityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         returned_ids = [e["id"] for e in response.json()]
         self.assertNotIn(deleted_entry.pk, returned_ids)
+

@@ -28,7 +28,7 @@ def make_entry(author, text="Hello world", visibility="PUBLIC", is_deleted=False
 def get_entry_ids(response, context_key="latest_entry_list"):
     """Extract entry IDs from a response context list."""
     entries = list(response.context.get(context_key) or [])
-    return [e["id"] for e in entries]
+    return [e.id for e in entries]
 
 
 class CommentTest(TestCase):

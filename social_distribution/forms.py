@@ -11,7 +11,7 @@ class ChangeProfileForm(forms.Form):
 class TextEntryForm(forms.ModelForm):
     class Meta: 
         model = TextEntry
-        fields = ['entry_text', 'content_type', 'visibility'] 
+        fields = ['entry_text', 'image','content_type', 'visibility'] 
         widgets = {
             'entry_text': forms.Textarea(attrs={'rows': 5}),
             'content_type': forms.Select(),

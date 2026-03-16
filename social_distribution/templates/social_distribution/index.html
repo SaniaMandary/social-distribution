@@ -32,7 +32,7 @@
                     <section class="entry-card" style="border-left:5px solid rgb(61, 159, 184);">
                         <p class="entry-card-author">You</p>
                         <p>{{entry.pub_date}}</p>
-                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                        <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
                     </section>
                 </a>
             {% endfor %}
@@ -73,7 +73,7 @@
                     <section class="entry-card" style="border-left:5px solid rgb(0, 0, 0);">
                         <p class="entry-card-author">{{entry.belonging_url}}</p>
                         <p>{{entry.pub_date}}</p>
-                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                        <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
                     </section>
                 </a>
             {% endfor %}

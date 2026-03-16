@@ -186,6 +186,10 @@ document.addEventListener("DOMContentLoaded", () => {
     {% else %}
          <p>{{ entry.entry_text }}</p>
     {% endif %}
+
+    {% if entry.image %}
+        <img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 400px; max-height: 400px;">
+    {% endif %}
   
 
     <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ has_liked|yesno:'true,false' }}">
@@ -235,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <hr>
 
     {% if request.user.username == entry.belonging_url %}
-    <section> 
+    <section>
         <label for="entry_text">Edit entry:</label><br>
         <textarea id="edit_entry_text" rows="4" cols="50">{{ entry.entry_text }}</textarea><br><br>
 

@@ -20,6 +20,9 @@ class TextEntry(models.Model):
     CONTENT_TYPE_CHOICES = [
         ('text/plain', 'Plain Text'),
         ('text/markdown', 'CommonMark'),
+        ('image/png', 'PNG Image'),
+        ('image/jpeg', 'JPEG Image'),
+        ('image/gif', 'GIF Image'),
     ]
 
     SOURCE_TYPE = [
@@ -34,7 +37,8 @@ class TextEntry(models.Model):
     ]
 
     belonging_url = models.CharField()
-    entry_text = models.TextField()
+    entry_text = models.TextField(blank=True, default='')
+    image = models.ImageField(upload_to='entries/', blank=True, null=True)
     pub_date = models.DateTimeField("date published", default=timezone.now)
     is_deleted = models.BooleanField(default=False)
     content_type = models.CharField(
