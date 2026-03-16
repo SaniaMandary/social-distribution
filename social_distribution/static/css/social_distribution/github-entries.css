@@ -24,185 +24,71 @@
     font-weight: 600;
 }
 
+
+/* ── Filter ── */
+
 .entry-filter-button {
-    display: inline-flex; 
-    align-items: center;
-    margin-bottom: 12px;
-    border-radius: 24px;
-    background: #fff;
-    border: 1.5px solid #d0d7de;
-    overflow: hidden;
-    transition: box-shadow 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
 }
 
-.entry-filter-button.fab-open {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.entry-filter-button-toggle {
+.entry-filter-button-options {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border: none;
-    background: transparent;
-    color: #555;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: background 0.2s ease, color 0.2s ease;
-}
- 
-
-.entry-filter-button-toggle:hover {
-    background: #f6f8fa;
-}
- 
-.entry-filter-button.fab-open .entry-filter-button-toggle {
-    background: #24292f;
-    color: #fff;
-}
- 
-.entry-filter-button-toggle svg {
-    width: 14px;
-    height: 14px;
-    fill: currentColor;
-    transition: transform 0.25s ease;
-}
- 
-.entry-filter-button.fab-open .entry-filter-button-toggle svg {
-    transform: rotate(180deg);
+    gap: 4px;
 }
 
-.entry-filter-button-label {
-    font-size: 0.75rem;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: #eef1f5;
-    color: #333;
-    white-space: nowrap;
-    margin-right: 6px;
-    transition: max-width 0.2s ease, opacity 0.2s ease, padding 0.2s ease, margin 0.2s ease;
-}
- 
-.entry-filter-button.fab-open .entry-filter-button-label {
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-}
- 
-.entry-filter-button-label.label-github {
-    background: #dcfce7;
-    color: #166534;
-}
- 
-
-entry-filter-button-tray {
-    display: flex;
-    align-items: center;
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.25s ease;
-}
- 
-.entry-filter-button.fab-open .entry-filter-button-tray {
-    max-width: 600px;
-    opacity: 1;
-}
- 
-
-.entry-filter-button-divider {
-    width: 1px;
-    height: 20px;
-    background: #d0d7de;
-    flex-shrink: 0;
-    margin: 0 4px;
-}
- 
-/* Option groups */
-.entry-filter-button-options {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 0 4px;
-}
- 
 .entry-filter-button-suboptions {
-    display: flex;
+    display: none;
     align-items: center;
-    gap: 2px;
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    padding: 0;
-    transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.2s ease,
-                padding 0.3s ease;
+    gap: 4px;
+    margin-left: 48px;
+    background: #f6f8fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 18px;
+    padding: 4px 6px;
 }
- 
+
 .entry-filter-button-suboptions.sub-open {
-    max-width: 350px;
-    opacity: 1;
-    padding: 0 4px;
+    display: inline-flex;
 }
- 
-/* Divider before suboptions */
-.entry-filter-button-subdiv {
-    width: 1px;
-    height: 20px;
-    background: #d0d7de;
-    flex-shrink: 0;
-    max-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-width 0.3s ease, opacity 0.2s ease, margin 0.3s ease;
-    margin: 0;
-}
- 
-.entry-filter-button-suboptions.sub-open + .entry-filter-button-subdiv,
-.entry-filter-button-subdiv.sub-open {
-    max-width: 2px;
-    opacity: 1;
-    margin: 0 4px;
-}
- 
-/* All option buttons */
+
 .entry-filter-button-options button,
 .entry-filter-button-suboptions button {
-    padding: 5px 12px;
-    border: none;
-    border-radius: 16px;
-    background: transparent;
+    padding: 3px 12px;
+    border: 1px solid #d0d7de;
+    border-radius: 14px;
+    background: #fff;
     color: #555;
     cursor: pointer;
     font-size: 0.8rem;
     font-weight: 500;
     white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
- 
+
 .entry-filter-button-options button:hover,
 .entry-filter-button-suboptions button:hover {
-    background: #f0f2f5;
+    background: #e1e4e8;
+    border-color: #999;
 }
- 
+
 .entry-filter-button-options button.active,
 .entry-filter-button-suboptions button.active {
-    background: #24292f;
+    background: #586069;
     color: #fff;
+    border-color: #586069;
 }
- 
+
 .entry-filter-button-options button.active-github {
     background: #238636;
     color: #fff;
+    border-color: #238636;
 }
+
+
  
 /* ── Hide/show entries ── */
  
