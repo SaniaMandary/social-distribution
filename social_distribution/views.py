@@ -37,14 +37,15 @@ def index(request):
                 following_entries_friends = TextEntry.objects.filter(belonging_url=following_author.url, visibility="FRIENDS", is_deleted=False)
                 following_entries = following_entries.union(following_entries_friends)
             following_entries_unlisted = TextEntry.objects.filter(belonging_url=following_author.url, visibility="UNLISTED", is_deleted=False)
-            following_entries = following_entries.union(following_entries_unlisted).order_by("-pub_date")
+            following_entries = following_entries.union(following_entries_unlisted)
 
             if followfriends_entries == None:
                 followfriends_entries = following_entries
             else:
-                followfriends_entries = followfriends_entries.union(following_entries).order_by("-pub_date")
+                followfriends_entries = followfriends_entries.union(following_entries)
 
         # all public entries
+        followfriends_entries = followfriends_entries.order_by("-pub_date")
         public_entries = TextEntry.objects.filter(visibility="PUBLIC", is_deleted=False).order_by("-pub_date")
 
         entries_dictionary = {
@@ -910,6 +911,7 @@ def fetch_github_entries(author):
             content_type='text/markdown',
             visibility='PUBLIC',
             pub_date=event_time,
+            source_type='github'
         ))
 
     if new_entries:
