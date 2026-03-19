@@ -10,7 +10,11 @@
 </head>
 <body>
     <nav class="nav-bar">
-        <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
+        {% if author.image %}
+         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
+         { else } 
+         <abbr class="default_avatar"></abbr>
+        {% endif %}
         <h1>{{author}}'s Page</h1>
     </nav>
 
@@ -55,7 +59,9 @@
                     <section class="entry-card {% if entry.source_type == 'github' %}github-entry{% endif %}" style="{% if entry.source_type != 'github' %}border-left:5px solid rgb(61, 159, 184);{% endif %}">
                         <p class="entry-card-author">{% if entry.source_type == 'github' %}GitHub Activity{% else %}{{entry.belonging_url}}{% endif %}</p>
                     <p>{{entry.pub_date}}</p>
-                    <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}{% if entry.content_type == 'text/markdown' %}{{ entry.entry_text|truncatechars:50 }}{% else %}{{ entry.entry_text }}{% endif %}</div>
+                    <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}
+                        {% if entry.content_type == 'text/markdown' %} {{ entry.content_rendered|safe }}
+                        {% else %} <p>{{ entry.entry_text }}</p> {% endif %}
                 </section>
                 <button class="entry-peek-tab" title="Hold to expand"></button>
             </a>

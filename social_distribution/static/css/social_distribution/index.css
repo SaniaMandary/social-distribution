@@ -20,13 +20,10 @@ html>body {
 
 .nav-bar {
     border: 2px solid black;
-
     padding: 15px;
     display: flex;
-
     background: linear-gradient(180deg, rgb(169, 238, 255) 50%, rgba(199, 244, 255, 1) 100%);
     border-radius: 10px;
-
     box-shadow:0 2px 10px rgba(0,0,0,0.2);
     margin-bottom: 25px;
 }
@@ -58,17 +55,45 @@ input{
 
 .entries {
     padding: 0;
+    list-style: none;
 }
 .entry-card-link-wrapper, .entry-card:visited {
+    display: flex;
+    flex-direction: column;
+    padding: 6px, 6px, 0;
+    border-bottom: 1px solid #e1e4e8; 
+    transition: background 0.12s;
     text-decoration: none;
     color: #000000;
 }
+
+.entry-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid #e1e4e8;
+    grid-column: 1;
+    grid-row: 1;
+}
+
+
 .entry-card {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 12px;
+    min-height: 110px;
     max-height: 120px;
     overflow: hidden;
     position: relative;
     box-shadow:0 2px 6px rgba(0,0,0,0.2);
     transition: max-height 0.3s ease;
+    background: linear-gradient(135deg, #f6f8fa 0%, #eef1f5 100%);
+    border-left: 5px solid #034874 !important;
+    padding: 10px 10px 10px 14px;
+    gap: 12px;
 }
 
 .entry-card.entry-expanded {
@@ -85,24 +110,98 @@ input{
     height: 30px;
     background: linear-gradient(transparent, #fff);
     pointer-events: none;
+    transition: opacity 0.2s;
 }
 
 .entry-card.github-entry:not(.entry-expanded)::after {
     background: linear-gradient(transparent, #eef1f5);
 }
 
+.entry-divider {
+    grid-column: 1 / -1;
+    border: none;
+    border-top: 1px solid #d0d7de;
+    margin: 1px 0 0 0;
+}
 
-.entry-card>p {
-    margin: 0px;
-}
 .entry-card-author {
-    margin: 0px;
+    align-content: flex-end;
     font-weight: bold;
-    font-size: 125%;
+    font-size: 13px;
+    margin: 0;
+    
 }
+
+.entry-card-date {
+    font-size: 11px;
+    color: #999; 
+}
+
+.entry-vis-label {
+    font-size: 10px;
+    color: #888;
+    border: 1px solid #d0d7de;
+    padding: 1px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/*Relationship with the poster e.g. Following, Friends, Self, or none. */
+.entry-rel-tag {
+    font-size: 10px;
+    background: #eef1f5;
+    color: #888;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.entry-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #999;
+    flex-shrink: 0;
+}
+
+.entry-card-content {
+    display: contents;
+}
+
+.entry-card-meta {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.entry-card-meta .entry-card-date,
+.entry-card-meta .entry-vis-label {
+    margin-left: auto;
+}
+
+.entry-card-meta .entry-vis-label {
+    margin-left: 6px;
+}
+
+
+
 .entry-card-entrytext {
-    margin-top: 10px;
+    grid-column: 1 / -1;
+    font-size: 13px;
+    color: #444;
+    line-height: 1.55;
+    margin-top: 5px;
 }
+
+.entry-card-entryheader {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 2px 0 0 0;
+}
+
 
 /*- grid view options -*/
 
@@ -172,6 +271,7 @@ input{
     position: relative;
     z-index: 2;
     transition: background 0.15s ease;
+    flex-shrink: 0;
 }
 
 .entry-peek-tab:hover {

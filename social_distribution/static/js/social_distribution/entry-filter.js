@@ -6,7 +6,9 @@ function initEntryFilter(containerSelector) {
         var fab = container.querySelector('.entry-filter-button'); 
         var opts = container.querySelector('.entry-filter-button-options');
         var subopts = container.querySelector('.entry-filter-button-suboptions'); 
-        var entryList = container.querySelector('.entries');
+        const entryList = container.querySelector('.entries');
+        
+
         var subdiv = container.querySelector('.entry-filter-button-subdiv');
 
         if (!fab || !opts || !entryList) return; 
@@ -102,8 +104,8 @@ function initViewToggle(containerSelector) {
 
 function initPeekTabs() {
     document.querySelectorAll('.entry-peek-tab').forEach(function(tab) {
-        var card = tab.closest('.entry-card-link-wrapper').querySelector('.entry-card');
-        if (!card) return;
+        var card = tab.previousElementSibling; 
+        if (!card || !card.classList.contains('entry-card')) return;
 
         tab.addEventListener('click', function(e) {
             e.preventDefault();

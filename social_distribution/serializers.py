@@ -36,7 +36,7 @@ class EntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TextEntry
-        fields = ['type', 'id', 'belonging_url', 'entry_text', 'pub_date', 'content_type', 'visibility', 'image']
+        fields = ['type', 'id', 'belonging_url', 'entry_text', 'entry_header', 'pub_date', 'content_type', 'visibility', 'image']
 
     def get_type(self, obj):
         return "entry"

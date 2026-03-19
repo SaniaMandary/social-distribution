@@ -35,9 +35,10 @@ class TextEntry(models.Model):
         ('FRIENDS', 'Friends'),
         ('UNLISTED', 'Unlisted'),
     ]
-
+    # Should implement a primary key variable for any specific entry. 
     belonging_url = models.CharField()
     entry_text = models.TextField(blank=True, default='')
+    entry_header = models.CharField(default='')
     image = models.ImageField(upload_to='entries/', blank=True, null=True)
     pub_date = models.DateTimeField("date published", default=timezone.now)
     is_deleted = models.BooleanField(default=False)

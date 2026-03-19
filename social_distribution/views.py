@@ -74,6 +74,23 @@ def index(request):
             visibility="PUBLIC",
             is_deleted=False
         ).order_by("-pub_date")
+        
+        # Apply markdown to all entries if they exist
+        #I should refactor this code in some othe function and then call it here. Maybe a utils.py ?  
+        for entry in entries or []:
+            if entry.content_type == 'text/markdown':
+                entry.content_rendered = markdown.markdown(entry.entry_text)
+                entry.header_rendered = markdown.markdown(entry.entry_header)
+
+        for followEntry in followfriends_entries or []:
+            if followEntry.content_type == 'text/markdown':
+                followEntry.content_rendered = markdown.markdown(followEntry.entry_text)
+                followEntry.header_rendered = markdown.markdown(followEntry.entry_header)
+
+        for pubEntry in public_entries or []:
+            if pubEntry.content_type == 'text/markdown':
+                pubEntry.content_rendered = markdown.markdown(pubEntry.entry_text)
+                pubEntry.header_rendered = markdown.markdown(pubEntry.entry_header)    
 
         return render(request, "social_distribution/index.html", {
             'latest_entry_list': entries,
@@ -173,6 +190,7 @@ class DetailView(generic.DetailView):
         # markdown rendering
         if entry.content_type == 'text/markdown': 
             entry.content_rendered = markdown.markdown(entry.entry_text)
+            entry.header_rendered = markdown.markdown(entry.entry_header)
 
         liked_object = f"{self.request.scheme}://{self.request.get_host()}/social_distribution/entries/{entry.id}"
         context['likes_count'] = Like.objects.filter(object=liked_object).count()
@@ -290,10 +308,15 @@ def addentry(request):
 
     data = {'belonging_url': author.url,
             'entry_text': request.data.get('entry_text',''),
+            'entry_header': request.data.get('entry_header', ''),
             'content_type': request.data.get('content_type','text/plain'),
             'visibility': request.data.get('visibility', 'PUBLIC'),
             'source_type': 'native',   
         }
+    
+    if not data['entry_header'].strip(): 
+        text = data['entry_text']
+        data['entry_header'] = text[:80] + ('...' if len(text) > 80 else '')
     
     if 'image' in request.FILES:
         data['image'] = request.FILES['image']

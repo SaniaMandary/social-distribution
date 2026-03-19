@@ -52,3 +52,18 @@ button{
     margin: 0 1%;
     border-radius: 5px;
 }
+
+default-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #3d9fb8;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 600;
+    text-decoration: none;
+    flex-shrink: 0;
+}
