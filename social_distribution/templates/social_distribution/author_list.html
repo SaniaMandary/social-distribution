@@ -12,7 +12,7 @@
     <ul>
         {% for author in authors %}
             <li>
-                <a href="{% url 'social_distribution:profile' author.url %}">{{ author.name}}</a>
+                <a href="{% url 'social_distribution:profile' author.username %}">{{ author.name}}</a>
             </li>
         {% empty %}
             <li>No authors yet.</li>

@@ -4,8 +4,6 @@ html {
     color: #000000;
     margin: 25px;
     font-family: monospace;
-
-    display: flex;
 }
 
 html>body {
@@ -60,7 +58,7 @@ input{
 .entry-card-link-wrapper, .entry-card:visited {
     display: flex;
     flex-direction: column;
-    padding: 6px, 6px, 0;
+    padding: 6px 6px 0;
     border-bottom: 1px solid #e1e4e8; 
     transition: background 0.12s;
     text-decoration: none;
@@ -68,32 +66,27 @@ input{
 }
 
 .entry-avatar {
-    width: 30px;
-    height: 30px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
     border: 1px solid #e1e4e8;
-    grid-column: 1;
-    grid-row: 1;
 }
 
 
 .entry-card {
-    display: grid;
-    grid-template-columns: 30px 1fr;
-    grid-template-rows: auto auto auto;
-    column-gap: 12px;
+    display: flex;
+    flex-direction: column;
     min-height: 110px;
     max-height: 120px;
     overflow: hidden;
     position: relative;
-    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     transition: max-height 0.3s ease;
     background: linear-gradient(135deg, #f6f8fa 0%, #eef1f5 100%);
     border-left: 5px solid #034874 !important;
     padding: 10px 10px 10px 14px;
-    gap: 12px;
 }
 
 .entry-card.entry-expanded {
@@ -118,10 +111,9 @@ input{
 }
 
 .entry-divider {
-    grid-column: 1 / -1;
     border: none;
     border-top: 1px solid #d0d7de;
-    margin: 1px 0 0 0;
+    margin: 2px 0;
 }
 
 .entry-card-author {
@@ -164,42 +156,41 @@ input{
 }
 
 .entry-card-content {
-    display: contents;
+    display: flex;
+    flex-direction: column;
 }
 
 .entry-card-meta {
-    grid-column: 2;
-    grid-row: 1;
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
-.entry-card-meta .entry-card-date,
-.entry-card-meta .entry-vis-label {
+.entry-card-meta-right {
     margin-left: auto;
+    display: flex; 
+    align-items: center;
+    gap: 6px;
 }
-
-.entry-card-meta .entry-vis-label {
-    margin-left: 6px;
-}
-
 
 
 .entry-card-entrytext {
-    grid-column: 1 / -1;
     font-size: 13px;
     color: #444;
     line-height: 1.55;
     margin-top: 5px;
+    word-wrap: break-word; 
 }
 
 .entry-card-entryheader {
-    grid-column: 1 / -1;
     font-size: 14px;
     font-weight: 600;
     margin: 2px 0 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 

@@ -17,25 +17,17 @@
         <label for="visibility">Visibility:</label><br>
         {{ form.visibility }}<br><br>
 
-        <label for="entry_header">Entry Header:</label><br>
-        {{ form.entry_header }}<br><br> 
+        <label for="title">Entry Title:</label><br>
+        {{ form.title }}<br><br> 
 
-        <label for="entry_text">Entry:</label><br>
-         {{ form.entry_text }}<br><br>
+        <label for="content">Entry:</label><br>
+         {{ form.content }}<br><br>
 
          <label for="image">Image:</label><br>
          {{ form.image }}<br><br>
 
-        <section id="markdown-section" style="display:none;"> 
-            <button id="switch-btn">Preview Markdown</button>
-            <h3>Output</h3>
-            <p id="markdown-output"></p>
-        </section>
-
         <a href="../">Back</a>
         <input type="submit" value="Submit">
     </form>
-
-    <script src="{% static 'markdown-editor.js' %}"></script>
-</body>
+  </body>
 </html>

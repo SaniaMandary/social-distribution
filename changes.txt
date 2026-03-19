@@ -1,0 +1,17 @@
+1) Added a new column to teh TextEntry model. entryheader = charfield 
+this will be used to load the header for every entry. The header will be by default 
+the first few chars of the content. Later I will implement the choice to input an optional header 
+when making a new entry. Also need to edit the (edit entry) portion so one Can edit the header 
+if they wish. 
+
+
+2) Standardized Model field attributes. Fixed Serializers to account for model changes. Refactored code 
+to reduce code duplication by putting alot of the logic inside utils.py since views.py was beginnning to 
+become cluttered. Incorporated existing APIs e.g. deleteentry, editentry; folded into api_author_entry_detail
+add_like, add_like_entry, add_like_comment  folded into api_entry_likes POST and api_comment_likes POST
+
+get_comments, post_entry_comment; folded into api_entry_comments
+public_user_entry, public_user_entries, public_get_entry, api_entry_detail; replaced by api_author_entries and api_author_entry_detail
+entry_get_response, entry_delete_response, entry_put_response; removed (logic merged into api_author_entry_detail)
+
+Changed html naming errors after model standardization 

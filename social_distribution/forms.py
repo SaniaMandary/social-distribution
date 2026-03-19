@@ -9,12 +9,15 @@ class ChangeProfileForm(forms.Form):
 
 
 class TextEntryForm(forms.ModelForm):
+    image = forms.FileField(required=False)
+
     class Meta: 
         model = TextEntry
-        fields = ['entry_text', 'entry_header', 'image','content_type', 'visibility'] 
+        fields = ['title', 'description','content', 'content_type', 'visibility'] 
         widgets = {
-            'entry_header': forms.Textarea(attrs={'rows': 1}),
-            'entry_text': forms.Textarea(attrs={'rows': 5}),
+            'title': forms.Textarea(attrs={'rows': 1}),
+            'description':forms.Textarea(attrs={'rows': 2}), 
+            'content': forms.Textarea(attrs={'rows': 5}),
             'content_type': forms.Select(),
             'visibility': forms.Select(),
         }

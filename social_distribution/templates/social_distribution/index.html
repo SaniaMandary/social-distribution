@@ -48,36 +48,38 @@
             </nav>
         <ol class="entries entries-container">
             {% for entry in latest_entry_list %}
-                <a href="{% url 'social_distribution:detail' entry.id %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
-                    <article class="entry-card {% if entry.source_type == 'github' %}github-entry{% endif %}">
-                        <img class="entry-avatar" src="{{picture_url}}" alt="{{author}}">
-                         <section class="entry-card-content">
-                           <header class="entry-card-meta">
-                             <cite class="entry-card-author">{{entry.belonging_url}}</cite>
-                             <span class="entry-dot"></span>
-                             <small class ="entry-rel-tag">(You)</small>
-                             <time class="entry-card-date">{{entry.pub_date}}</time>
-                            {% if entry.source_type != 'github' %}
-                                <mark class="entry-vis-label">{{entry.visibility}}</mark>
-                            {% endif %}
+                <a href="{% url 'social_distribution:detail' entry.pk %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
+                    <article class="entry-card {% if entry.source_type == 'github' %}github-entry{% endif %}" style="{% if entry.source_type != 'github' %}border-left:5px solid rgb(61, 184, 88) !important;{% endif %}">
+                        <section class="entry-card-content">
+                             <header class="entry-card-meta">
+                                <img class="entry-avatar" src="{{entry.author.picture}}" alt="{{entry.author.username}}">
+                                <cite class="entry-card-author">{{entry.author.username}}</cite>
+                                <span class="entry-card-meta-right">
+                                <small class ="entry-rel-tag">(You)</small>
+                                    <time class="entry-card-date">{{entry.published}}</time>
+                                    {% if entry.source_type != 'github' %}
+                                        <mark class="entry-vis-label">{{entry.visibility}}</mark>
+                                    {% endif %}
+                                </span>
                            </header>
                            <hr class="entry-divider">
                            <h3 class="entry-card-entryheader">
                                 {% if entry.content_type == 'text/markdown' %}
                                     {{ entry.header_rendered|safe }}
                                 {% else %}
-                                    {{ entry.entry_header }}
+                                    {{ entry.title }}
                                 {% endif %}
                             </h3>
                             <hr class="entry-divider">
-                            <p class="entry-card-entrytext">
+                            <div class="entry-card-entrytext">
                                 {% if entry.content_type == 'text/markdown' %} 
                                     {{ entry.content_rendered|safe }}
-                                {% else %} 
-                                {{ entry.entry_text }} 
+                                {% elif entry.content_type|slice:":6" == "image/" %}
+                                    <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                                {% else %}
+                                    {{ entry.content }}
                                 {% endif %}
-                                 {% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}
-                            </p>
+                            </div>
                         </section>
                     </article> 
                     <button class="entry-peek-tab" title="Hold to expand"></button>
@@ -113,13 +115,15 @@
             </nav>
         <ol class="entries entries-container">
             {% for entry in following_entry_stream %}
-                <a href="{% url 'social_distribution:detail' entry.id %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
+                <a href="{% url 'social_distribution:detail' entry.pk %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
                     <section class="entry-card {% if entry.source_type == 'github' %}github-entry{% endif %}" style="{% if entry.source_type != 'github' %}border-left:5px solid rgb(61, 184, 88);{% endif %}">
-                        <p class="entry-card-author">{% if entry.source_type == 'github' %}GitHub: {{entry.belonging_url}}{% else %}[{{entry.visibility}}] {{entry.belonging_url}}{% endif %}</p>
-                        <p>{{entry.pub_date}}</p>
-                        <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}
+                        <p class="entry-card-author">{% if entry.source_type == 'github' %}GitHub: {{entry.author.username}}{% else %}[{{entry.visibility}}] {{entry.author.username}}{% endif %}</p>
+                        <p>{{entry.published}}</p>
+                        <div class="entry-card-entrytext">
                             {% if entry.content_type == 'text/markdown' %} {{ entry.content_rendered|safe }}
-                            {% else %} <p>{{ entry.entry_text }}</p> {% endif %}
+                            {% elif entry.content_type|slice:":6" == "image/" %}
+                                <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                            {% else %} <p>{{ entry.content }}</p> {% endif %}
                         </div>
                     </section>
                     <button class="entry-peek-tab" title="Hold to expand"></button>
@@ -157,13 +161,14 @@
             </nav>
         <ol class="entries entries-container">
             {% for entry in all_public_entries %}
-                <a href="{% url 'social_distribution:detail' entry.id %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
+                <a href="{% url 'social_distribution:detail' entry.pk %}" class="entry-card-link-wrapper entry-item-{% if entry.source_type == 'github' %}github{% else %}native{% endif %}" data-visibility="{{entry.visibility}}">
                     <section class="entry-card {% if entry.source_type == 'github' %}github-entry{% endif %}" style="{% if entry.source_type != 'github' %}border-left:5px solid rgb(0, 0, 0);{% endif %}">
-                        <p class="entry-card-author">{% if entry.source_type == 'github' %}GitHub: {{entry.belonging_url}}{% else %}{{entry.belonging_url}}{% endif %}</p>
-                        <p>{{entry.pub_date}}</p>
-                        <div class="entry-card-entrytext">{% if entry.image %}<img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">{% endif %}
-                            {% if entry.content_type == 'text/markdown' %} {{ entry.content_rendered|safe }}
-                            {% else %} <p>{{ entry.entry_text }}</p> {% endif %}
+                        <p class="entry-card-author">{% if entry.source_type == 'github' %}GitHub: {{entry.author.username}}{% else %}{{entry.author.username}}{% endif %}</p>
+                        <p>{{entry.published}}</p>
+                        <div class="entry-card-entrytext">{% if entry.content_type == 'text/markdown' %} {{ entry.content_rendered|safe }}
+                            {% elif entry.content_type|slice:":6" == "image/" %}
+                                <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                            {% else %} <p>{{ entry.content }}</p> {% endif %}
                         </div>
                     </section>
                     <button class="entry-peek-tab" title="Hold to expand"></button>

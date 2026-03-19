@@ -24,10 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Like button handler for entries
     document.querySelectorAll(".like-button").forEach(button => {
         button.addEventListener("click", () => {
-            const entryId = button.dataset.entryId;
-            const counter = document.getElementById(`likes-count-${entryId}`);
+            const authorSerial = button.dataset.authorSerial; 
+            const entryPk = button.dataset.entryPk;
+            const counter = document.getElementById(`likes-count-${entryPk}`);
+            const currentlyLiked = button.dataset.liked === "true";
+            console.log("entryPk:", entryPk, "counter:", counter, "button:", button);
 
-            fetch(`/social_distribution/api/likes/add/${entryId}/`, {
+
+            fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/likes/`, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),
@@ -35,18 +39,16 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .then(res => res.json())
             .then(data => {
-                if (!data.success) return;
-
                 const current = parseInt(counter.textContent) || 0;
 
-                if (data.liked) {
-                    button.textContent = "Unlike";
-                    button.dataset.liked = "true";
-                    counter.textContent = `${current + 1} likes`;
-                } else {
+                if (data.liked === false) {
                     button.textContent = "Like";
                     button.dataset.liked = "false";
                     counter.textContent = `${current - 1} likes`;
+                } else {
+                    button.textContent = "Unike";
+                    button.dataset.liked = "true";
+                    counter.textContent = `${current + 1} likes`;
                 }
             });
         });
@@ -55,10 +57,14 @@ document.addEventListener("DOMContentLoaded", () => {
     // Like button handler for comments
     document.querySelectorAll(".comment-like-button").forEach(button => {
         button.addEventListener("click", () => {
-            const commentId = button.dataset.commentId;
-            const counter = document.getElementById(`comment-likes-count-${commentId}`);
+            if (button.disabled) return;
+            button.disabled = true; 
+            const authorSerial = button.dataset.authorSerial;
+            const entryPk = button.dataset.entryPk;
+            const commentFqid = button.dataset.commentFqid;
+            const counter = document.getElementById(`comment-likes-count-${commentFqid}`);
 
-            fetch(`/social_distribution/api/comments/${commentId}/likes/`, {
+            fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/comments/${encodeURIComponent(commentFqid)}/likes/`, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": getCookie("csrftoken"),
@@ -66,20 +72,19 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .then(res => res.json())
             .then(data => {
-                if (!data.success) return;
-
                 const current = parseInt(counter.textContent) || 0;
 
-                if (data.liked) {
-                    button.textContent = "Unlike";
-                    button.dataset.liked = "true";
-                    counter.textContent = `${current + 1} likes`;
-                } else {
+                if (data.liked === false) {
                     button.textContent = "Like";
                     button.dataset.liked = "false";
                     counter.textContent = `${current - 1} likes`;
+                } else {
+                    button.textContent = "Unlike";
+                    button.dataset.liked = "true";
+                    counter.textContent = `${current + 1} likes`;
                 }
-            });
+            })
+            .finally(() => { button.disabled = false; });
         });
     });
 
@@ -90,8 +95,11 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const text = document.getElementById('comment-text').value;
             if (!text.trim()) return;
+
+            const authorSerial = commentForm.dataset.authorSerial;
+            const entryPk = commentForm.dataset.entryPk;
             
-            fetch(`/social_distribution/api/entries/{{ entry.id }}/comments/add/`, {
+            fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/comments/`, {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
@@ -110,20 +118,17 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .then(data => {
                 console.log("Posted comment:", data);
-                // Append the comment to the list
-                const ul = document.getElementById('comments-list');
-                
-                // Remove "No comments yet" message if present
-                const emptyMsg = ul.querySelector('li');
+                const ul = document.getElementById('comments-list'); // Append the comment to the list
+                const emptyMsg = ul.querySelector('li'); // Remove "No comments yet" message if present
                 if (emptyMsg && emptyMsg.textContent === 'No comments yet.') {
                     ul.innerHTML = '';
                 }
                 
                 const li = document.createElement('li');
-                const authorName = data.author.displayName || data.author.name || 'Unknown';
+                const authorName = data.author?.displayName || data.author?.name || 'Unknown';
                 const publishedDate = new Date(data.published).toLocaleString();
                 // build list item with like button and count
-                li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.content}`;
+                li.innerHTML = `<strong>${authorName}</strong> (${publishedDate}): ${data.comment}`;
                 // only authenticated users can post, so show like button
                 li.innerHTML += `<br><button class="comment-like-button" data-comment-id="${data.comment_id}" data-liked="false">Like</button> ` +
                               `<span class="comment-likes-count" id="comment-likes-count-${data.comment_id}">0 likes</span>`;
@@ -133,26 +138,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 const newBtn = li.querySelector('.comment-like-button');
                 if (newBtn) {
                     newBtn.addEventListener('click', () => {
-                        const commentId = newBtn.dataset.commentId;
-                        const counter = document.getElementById(`comment-likes-count-${commentId}`);
-                        fetch(`/social_distribution/api/comments/${commentId}/likes/`, {
+
+                        if (newBtn.disabled) return; 
+                        newBtn.disabled = true; 
+                        const fqid = newBtn.dataset.commentFqid;
+                        const counter = document.getElementById(`comment-likes-count-${fqid}`);
+                        fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/comments/${encodeURIComponent(fqid)}/likes/`, {
                             method: "POST",
                             headers: {"X-CSRFToken": getCookie("csrftoken")},
                         })
                         .then(r => r.json())
                         .then(d => {
-                            if (!d.success) return;
                             const current = parseInt(counter.textContent) || 0;
-                            if (d.liked) {
-                                newBtn.textContent = "Unlike";
-                                newBtn.dataset.liked = "true";
-                                counter.textContent = `${current + 1} likes`;
-                            } else {
+                            if (d.liked === false) {
                                 newBtn.textContent = "Like";
                                 newBtn.dataset.liked = "false";
                                 counter.textContent = `${current - 1} likes`;
+                            } else {
+                                newBtn.textContent = "Unlike";
+                                newBtn.dataset.liked = "true";
+                                counter.textContent = `${current + 1} likes`;
                             }
-                        });
+                        })
+                        .finally(() => { newBtn.disabled = false; });
                     });
                 }
             })
@@ -168,13 +176,13 @@ document.addEventListener("DOMContentLoaded", () => {
   <header>
     <!---Are we dealing with a markdown entry? -->  
    {% if entry.content_type == 'text/markdown' %}
-    <h1>{{ entry.content_rendered|safe }}</h1>
+    <h1>{{ entry.header_rendered|safe }}</h1>
     {% else %}
-        <h1>{{ entry.entry_text }}</h1>
+        <h1>{{ entry.title }}</h1>
     {% endif %}
-    <p>Posted by: {{ entry.belonging_url }}</p>
+    <p>Posted by: {{ entry.author.username }}</p>
     <br>
-    <p>Date: {{ entry.pub_date }}</p>
+    <p>Date: {{ entry.published }}</p>
   </header>
 
   <hr>
@@ -183,29 +191,20 @@ document.addEventListener("DOMContentLoaded", () => {
      <!---same thing down here.  -->  
     {% if entry.content_type == 'text/markdown' %}
      {{ entry.content_rendered|safe }}
+    {% elif entry.content_type|slice:":6" == "image/" %}
+        <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 400px; max-height: 400px;">
     {% else %}
          <p>{{ entry.entry_text }}</p>
     {% endif %}
 
-    {% if entry.image %}
-        <img src="{{ entry.image.url }}" alt="Entry image" style="max-width: 400px; max-height: 400px;">
-        <p>
-            <small>Image URL for markdown: 
-                <code>{{ request.scheme }}://{{ request.get_host }}/social_distribution/api/authors/{{ entry.belonging_url }}/entries/{{ entry.id }}/image</code>
-            </small>
-        </p>
-    {% endif %}
-  
-
-    <button class="like-button" data-entry-id="{{ entry.id }}" data-liked="{{ has_liked|yesno:'true,false' }}">
-    {% if has_liked %}
-        Unlike
-    {% else %}
-        Like
-    {% endif %}
+    <button class="like-button" 
+            data-author-serial="{{ entry.author.serial }}" 
+            data-entry-pk="{{ entry.pk }}"
+            data-liked="{{ has_liked|yesno:'true,false' }}">
+        {% if has_liked %}Unlike{% else %}Like{% endif %}
     </button>
 
-    <p class="likes-count" id="likes-count-{{ entry.id }}">
+    <p class="likes-count" id="likes-count-{{ entry.pk }}">
         {{ likes_count|default:0 }} likes
     </p>
   </section>
@@ -217,14 +216,18 @@ document.addEventListener("DOMContentLoaded", () => {
     <ul id="comments-list">
         {% for comment in comments %}
             <li>
-                <strong>{{ comment.author.name }}</strong> ({{ comment.created_at|date:"M d, Y H:i" }}):
+                <strong>{{ comment.author.name }}</strong> ({{ comment.published|date:"M d, Y H:i" }}):
                 {{ comment.content }}
                 {% if request.user.is_authenticated %}
                 <br>
-                <button class="comment-like-button" data-comment-id="{{ comment.id }}" data-liked="{{ comment.user_liked|yesno:'true,false' }}">
+                <button class="comment-like-button" 
+                        data-author-serial="{{ entry.author.serial }}"
+                        data-entry-pk="{{ entry.pk }}"
+                        data-comment-fqid="{{ comment.fqid }}" 
+                        data-liked="{{ comment.user_liked|yesno:'true,false' }}">
                     {% if comment.user_liked %}Unlike{% else %}Like{% endif %}
                 </button>
-                <span class="comment-likes-count" id="comment-likes-count-{{ comment.id }}">{{ comment.likes_count|default:0 }} likes</span>
+                <span class="comment-likes-count" id="comment-likes-count-{{ comment.fqid }}">{{ comment.likes_count|default:0 }} likes</span>
                 {% endif %}
             </li>
         {% empty %}
@@ -233,7 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </ul>
 
     {% if request.user.is_authenticated %}
-    <form id="comment-form">
+    <form id="comment-form" data-author-serial="{{ entry.author.serial }}" data-entry-pk="{{ entry.pk }}">
         <textarea id="comment-text" placeholder="Add a comment..." required></textarea>
         <br>
         <input type="submit" value="Post Comment">
@@ -243,44 +246,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <hr>
 
-    {% if request.user.username == entry.belonging_url %}
+    {% if request.user.username == entry.author.username %}
     <section>
-        <label for="entry_text">Edit entry:</label><br>
-        <textarea id="edit_entry_text" rows="4" cols="50">{{ entry.entry_text }}</textarea><br><br>
+        <label for="edit_content">Edit entry:</label><br>
+        <textarea id="edit_content" rows="4" cols="50">{{ entry.content }}</textarea><br><br>
 
-        <label for="content_type">Content Type:</label><br>
+        <label for="edit_content_type">Content Type:</label><br>
         <select id="edit_content_type">
             <option value="text/plain" {% if entry.content_type == 'text/plain' %}selected{% endif %}>Plain Text</option>
             <option value="text/markdown" {% if entry.content_type == 'text/markdown' %}selected{% endif %}>CommonMark (Markdown)</option>
         </select><br><br>
 
-        <label for="visibility">Visibility:</label><br>
+        <label for="edit_visibility">Visibility:</label><br>
         <select id="edit_visibility">
             <option value="PUBLIC" {% if entry.visibility == 'PUBLIC' %}selected{% endif %}>Public</option>
             <option value="FRIENDS" {% if entry.visibility == 'FRIENDS' %}selected{% endif %}>Friends</option>
             <option value="UNLISTED" {% if entry.visibility == 'UNLISTED' %}selected{% endif %}>Unlisted</option>
         </select><br><br>
 
-        <section id="edit-markdown-section" style="display:none;">
-            <button id="edit-convert-btn">Preview Markdown</button>
-            <h3>Output</h3>
-            <p id="edit-markdown-output"></p>
-        </section>
-
         <button id="save-edit-btn">Save Changes</button>
         <button id="delete-entry-btn">Delete</button>
 
         <script>
+        const authorSerial = "{{ entry.author.serial }}";
+        const entryPk = "{{ entry.pk }}";
+
         document.getElementById('save-edit-btn').addEventListener('click', function() {
-            fetch(`/social_distribution/api/entries/{{ entry.id }}/`, {
+            fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken'),
                 },
                 body: JSON.stringify({
-                    entry_text: document.getElementById('edit_entry_text').value,
-                    content_type: document.getElementById('edit_content_type').value,
+                    content: document.getElementById('edit_content').value,
+                    contentType: document.getElementById('edit_content_type').value,
                     visibility: document.getElementById('edit_visibility').value,
                 })
             })
@@ -297,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         document.getElementById('delete-entry-btn').addEventListener('click', function() {
             if (!confirm('Are you sure you want to delete this entry?')) return;
-            fetch(`/social_distribution/api/entries/{{ entry.id }}/`, {
+            fetch(`/social_distribution/api/authors/${authorSerial}/entries/${entryPk}/`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
@@ -324,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <a href="/social_distribution/">Back</a>
 
-    <script src="{% static 'markdown-editor.js' %}"></script>
+    
     <script> 
         document.addEventListener('DOMContentLoaded', function() { 
             initMarkdownEditor('edit_content_type', 'edit_entry_text',

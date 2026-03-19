@@ -1,121 +1,119 @@
-from django.utils import timezone
+import base64
 import markdown
 import logging
 import requests as http_requests
+#django imports
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import generic
 from django.db.models import Q
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from django.http import HttpResponse
+from django.http import FileResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from .forms import TextEntryForm
+# rest imports 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+# django objects 
+from .forms import TextEntryForm, ChangeProfileForm
 from .models import Like, TextEntry, Author, Follow, Comment
-from .forms import ChangeProfileForm
-from .serializers import EntrySerializer, AuthorSerializer, LikeSerializer, CommentSerializer
-from django.http import FileResponse
+# serializers
+from .serializers import (
+    EntrySerializer, AuthorSerializer, LikeSerializer, 
+    CommentSerializer, FollowSerializer,
+)
+# Utility functions 
+from .utils import (
+    NOT_DELETED, get_author_by_serial, get_current_author,
+    author_exists, validate_create_author, friends,
+    fetch_remote_author, can_view_entry, render_markdown_entries,
+    get_page_args, paginate_set, build_paginated_response,
+    fetch_github_entries,
+)
 
-# VIEWS
 logger = logging.getLogger(__name__)
 
+
+# Web-UI Views 
 def index(request):
-    if request.user.is_authenticated:
-        # authenticated personal page view
-        author = Author.objects.get(pk=request.user.username)
+    if not request.user.is_authenticated: # authenticated personal page view
+        return redirect('/social_distribution/login')
+    
+    author = get_current_author(request)
+    fetch_github_entries(author, 0) # no cooldown. Refresh always for the logged in user  
+    entries = TextEntry.objects.filter(author=author).filter(NOT_DELETED).order_by("-published")
 
-        # author's own entries
-        entries = TextEntry.objects.filter(
-            belonging_url=request.user.username,
-            is_deleted=False
-        ).order_by("-pub_date")
+    # stream: entries from authors you follow
+    followfriends_entries = None
+    people_you_follow = Follow.objects.filter(follower=author, approved=True)
 
-        # stream: entries from authors you follow
-        followfriends_entries = None
-        people_you_follow = Follow.objects.filter(follower=author, approved=True)
+    for follow in people_you_follow:
+        following_author = follow.following
 
-        for follow in people_you_follow:
-            following_author = follow.following
+        fetch_github_entries(following_author, 1) # enable a cool down for these calls. 
 
-            # everyone you follow: public entries
-            following_entries = TextEntry.objects.filter(
-                belonging_url=following_author.url,
-                visibility="PUBLIC",
-                is_deleted=False
-            )
-            # everyone you follow: unlisted entries
+        # everyone you follow: public entries
+        following_entries = TextEntry.objects.filter(
+            author=following_author,
+            visibility="PUBLIC",
+        ).filter(NOT_DELETED)
+
+        # everyone you follow: unlisted entries
+        following_entries = following_entries.union(
+            TextEntry.objects.filter(
+                author=following_author,
+                visibility="UNLISTED",
+            ).filter(NOT_DELETED)
+        )
+
+        # friends only: friends-only entries
+        if friends(author, following_author):
             following_entries = following_entries.union(
                 TextEntry.objects.filter(
-                    belonging_url=following_author.url,
-                    visibility="UNLISTED",
-                    is_deleted=False
-                )
+                    author=following_author,
+                    visibility="FRIENDS",
+                ).filter(NOT_DELETED)
             )
-            # friends only: friends-only entries
-            if friends(author, following_author):
-                following_entries = following_entries.union(
-                    TextEntry.objects.filter(
-                        belonging_url=following_author.url,
-                        visibility="FRIENDS",
-                        is_deleted=False
-                    )
-                )
 
-            if followfriends_entries is None:
-                followfriends_entries = following_entries
-            else:
-                followfriends_entries = followfriends_entries.union(following_entries)
+        if followfriends_entries is None:
+            followfriends_entries = following_entries
+        else:
+            followfriends_entries = followfriends_entries.union(following_entries)
 
-        if followfriends_entries is not None:
-            followfriends_entries = followfriends_entries.order_by("-pub_date")
+    if followfriends_entries is not None:
+        followfriends_entries = followfriends_entries.order_by("-published")
 
-        # all public entries on the node
-        public_entries = TextEntry.objects.filter(
-            visibility="PUBLIC",
-            is_deleted=False
-        ).order_by("-pub_date")
-        
-        # Apply markdown to all entries if they exist
-        #I should refactor this code in some othe function and then call it here. Maybe a utils.py ?  
-        for entry in entries or []:
-            if entry.content_type == 'text/markdown':
-                entry.content_rendered = markdown.markdown(entry.entry_text)
-                entry.header_rendered = markdown.markdown(entry.entry_header)
+    # all public entries on the node
+    public_entries = TextEntry.objects.filter(visibility="PUBLIC").filter(NOT_DELETED).order_by("-published")
+    
+    # Apply markdown to all entries if they exist
+    #I should refactor this code in some othe function and then call it here. Maybe a utils.py ?  
+    render_markdown_entries(entries)
+    render_markdown_entries(followfriends_entries)
+    render_markdown_entries(public_entries)   
 
-        for followEntry in followfriends_entries or []:
-            if followEntry.content_type == 'text/markdown':
-                followEntry.content_rendered = markdown.markdown(followEntry.entry_text)
-                followEntry.header_rendered = markdown.markdown(followEntry.entry_header)
+    return render(request, "social_distribution/index.html", {
+        'latest_entry_list': entries,
+        'following_entry_stream': followfriends_entries,
+        'all_public_entries': public_entries,
+        'author': author.name,
+        'picture_url': author.picture,
+        'public_url': author.username,
+    })
+    
 
-        for pubEntry in public_entries or []:
-            if pubEntry.content_type == 'text/markdown':
-                pubEntry.content_rendered = markdown.markdown(pubEntry.entry_text)
-                pubEntry.header_rendered = markdown.markdown(pubEntry.entry_header)    
-
-        return render(request, "social_distribution/index.html", {
-            'latest_entry_list': entries,
-            'following_entry_stream': followfriends_entries,
-            'all_public_entries': public_entries,
-            'author': author.name,
-            'picture_url': author.picture,
-            'public_url': author.url,
-        })
-    else:
-        # redirect for login
-        return redirect('/social_distribution/login')
 
 def profile_view(request, username):
-    author = get_object_or_404(Author, pk=username)
-    fetch_github_entries(author) 
+    author = get_object_or_404(Author, username=username)
+    fetch_github_entries(author, 0) # no cooldown 
 
     current_author = None
     if request.user.is_authenticated:
-        current_author = Author.objects.get(pk=request.user.username)
+        current_author = get_current_author(request)
 
     is_own_profile = current_author == author if current_author else False
 
     entry_filter = Q(visibility='PUBLIC')
-
     if is_own_profile:
         # owner sees all their own entries
         entry_filter |= Q(visibility='FRIENDS') | Q(visibility='UNLISTED')
@@ -123,10 +121,7 @@ def profile_view(request, username):
         if friends(current_author, author):
             entry_filter |= Q(visibility='FRIENDS')
     
-    entries = TextEntry.objects.filter(
-        belonging_url=username,
-        is_deleted=False,
-    ).filter(entry_filter).order_by("-pub_date")
+    entries = TextEntry.objects.filter(author=author).filter(NOT_DELETED).filter(entry_filter).order_by("-published")
 
     is_following = False
     is_follow_requested = False
@@ -143,17 +138,16 @@ def profile_view(request, username):
                 approved=False
             ).exists()
 
-    entries_dictionary = {
+
+    return render(request, "social_distribution/publicprofile.html", {
         'latest_entry_list' : entries,
         'author' : author.name,
-        'author_username': author.url,
+        'author_username': author.username,
         'picture_url' : author.picture,
         'is_following': is_following,
         'is_follow_requested': is_follow_requested,
         'is_own_profile': is_own_profile
-    }
-
-    return render(request, "social_distribution/publicprofile.html", entries_dictionary)
+    })
 
 class DetailView(generic.DetailView):
     model = TextEntry
@@ -165,55 +159,44 @@ class DetailView(generic.DetailView):
         entry = context['entry']
         user = self.request.user
 
-        author_entry_belongs_to = Author.objects.get(pk=entry.belonging_url)
-
         # deleted entries are never visible
         if entry.is_deleted:
             context['is_visible'] = False
-
         # public and unlisted entries are always visible via link
         elif entry.visibility in ("PUBLIC", "UNLISTED"):
             context['is_visible'] = True
-
         # friends-only: need to be authenticated and be a friend (or the owner)
         elif entry.visibility == "FRIENDS":
             if not user.is_authenticated:
                 context['is_visible'] = False
             else:
-                viewer = Author.objects.get(pk=user.username)
-                is_owner = viewer == author_entry_belongs_to
-                context['is_visible'] = is_owner or friends(viewer, author_entry_belongs_to)
+                viewer = get_author_by_serial(user.username)
+                context['is_visible'] = (viewer == entry.author) or friends(viewer, entry.author)
 
         else:
             context['is_visible'] = False
 
         # markdown rendering
         if entry.content_type == 'text/markdown': 
-            entry.content_rendered = markdown.markdown(entry.entry_text)
-            entry.header_rendered = markdown.markdown(entry.entry_header)
+            entry.content_rendered = markdown.markdown(entry.content)
+            entry.header_rendered = markdown.markdown(entry.title)
 
-        liked_object = f"{self.request.scheme}://{self.request.get_host()}/social_distribution/entries/{entry.id}"
-        context['likes_count'] = Like.objects.filter(object=liked_object).count()
+        context['likes_count'] = Like.objects.filter(object_url=entry.fqid).count()
         
         # Check if user has liked this entry
         if user.is_authenticated:
-            context['has_liked'] = Like.objects.filter(author__pk=user.username, object=liked_object).exists()
+            context['has_liked'] = Like.objects.filter(author__username=user.username, object_url=entry.fqid).exists()
         else:
             context['has_liked'] = False
         
         # Get all comments for this entry
-        comments = Comment.objects.filter(entry=entry).order_by('-created_at')
+        comments = Comment.objects.filter(local_entry=entry).order_by('-published')
         # annotate like counts and whether current user liked each comment
         comment_list = []
         for comment in comments:
-            comment.likes_count = Like.objects.filter(
-                object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.pk}"
-            ).count()
+            comment.likes_count = Like.objects.filter(object_url=comment.fqid).count()
             if user.is_authenticated:
-                comment.user_liked = Like.objects.filter(
-                    author__pk=user.username,
-                    object=f"{self.request.scheme}://{self.request.get_host()}/social_distribution/comments/{comment.pk}"
-                ).exists()
+                comment.user_liked = Like.objects.filter(author__username=user.username, object_url=comment.fqid).exists()
             else:
                 comment.user_liked = False
             comment_list.append(comment)
@@ -225,31 +208,26 @@ def login_view(request):
     if request.user.is_authenticated:
         # if authenticated, redirect to index
         return redirect("/social_distribution")
-    else:
-        # if not logged in, render the login page
-        return render(request, "login.html")
+    # if not logged in, render the login page
+    return render(request, "login.html")
+
 
 @login_required(login_url='/social_distribution/login')
 def newentry_view(request):
     form = TextEntryForm()
     return render(request, "social_distribution/newentry.html", {'form': form})
 
+
 @login_required(login_url='/social_distribution/login')
 def changeprofile_view(request):
-    author = Author.objects.get(pk=request.user.username)
-    return render(request, "changeprofile.html", 
-                  {'name' : author.name, 'description' : author.description, 'picture' : author.picture, 'github' : author.github })
+    author = get_current_author(request)
+    return render(request, "changeprofile.html", {
+        'name' : author.name, 'description' : author.description, 
+        'picture' : author.picture, 'github' : author.github 
+    })
 
 
 # API CALLABLE
-
-def author_exists(username):
-    return Author.objects.filter(url=username).exists()
-def validate_create_author(username, node_host):
-    if author_exists(username):
-        return
-    author = Author(url=username, name=username, host=node_host, is_local=True)
-    author.save()
     
 @api_view(['POST'])
 def loginregister(request):
@@ -260,7 +238,7 @@ def loginregister(request):
 
     if user is not None:
         validate_create_author(username, node_host)
-        author = Author.objects.get(pk=username)
+        author = Author.objects.get(username=username)
         if not author.is_approved:
             return render(request, 'login.html', {'message': 'Your account is pending admin approval.'})
         login(request, user)
@@ -268,13 +246,15 @@ def loginregister(request):
     else:
         if not author_exists(username):
             try:
-                user = User.objects.create_user(username=username, password=password)
+                User.objects.create_user(username=username, password=password)
                 validate_create_author(username, node_host)
-                return render(request, 'login.html', {'message': 'Account created for ' + str(username) + '. Waiting for admin approval.'})
+                return render(request, 'login.html', {
+                    'message': f'Account created for {username}. Waiting for admin approval.'
+                    })
             except Exception as ex:
                 return render(request, 'login.html', {'message': str(ex)})
-
         return render(request, 'login.html', {'message': 'Invalid username or password'})
+
 
 @login_required
 @api_view(['POST'])
@@ -282,64 +262,73 @@ def signout(request):
     logout(request._request)
     return redirect("/social_distribution")
 
+
 @login_required
 @api_view(['POST'])
 def editprofile(request):
-    author = Author.objects.get(pk=request.user.username)
-
-    commentForm = ChangeProfileForm(request.data)
-    if commentForm.is_valid():
-        author.name = commentForm.cleaned_data['name']
-        if commentForm.cleaned_data['description']:
-            author.description = commentForm.cleaned_data['description']
-        if commentForm.cleaned_data['picture']:
-            author.picture = commentForm.cleaned_data['picture']
-        if commentForm.cleaned_data['github']:
-            author.github = commentForm.cleaned_data['github']
+    author = get_current_author(request)
+    form = ChangeProfileForm(request.data)
+    if form.is_valid():
+        author.name = form.cleaned_data['name']
+        if form.cleaned_data['description']:
+            author.description = form.cleaned_data['description']
+        if form.cleaned_data['picture']:
+            author.picture = form.cleaned_data['picture']
+        if form.cleaned_data['github']:
+            author.github = form.cleaned_data['github']
         author.save()
         return redirect("/social_distribution")
     
     return render(request, 'changeprofile.html', {'message': 'Form requirements failed, change failed.'})
 
-@login_required
-@api_view(['POST'])
-def addentry(request):
-    author = Author.objects.get(pk=request.user.username)
 
-    data = {'belonging_url': author.url,
-            'entry_text': request.data.get('entry_text',''),
-            'entry_header': request.data.get('entry_header', ''),
-            'content_type': request.data.get('content_type','text/plain'),
-            'visibility': request.data.get('visibility', 'PUBLIC'),
-            'source_type': 'native',   
-        }
-    
-    if not data['entry_header'].strip(): 
-        text = data['entry_text']
-        data['entry_header'] = text[:80] + ('...' if len(text) > 80 else '')
+@login_required
+def addentry(request):
+    if request.method != 'POST': 
+        return redirect("/social_distribution")
+
+    author = get_current_author(request)
+    title = request.POST.get('title', '')
+    content = request.POST.get('content','')
+    description = request.POST.get('description', '')
+    content_type = request.POST.get('content_type','text/plain')
+    visibility = request.POST.get('visibility', 'PUBLIC')
     
     if 'image' in request.FILES:
-        data['image'] = request.FILES['image']
+        image_file = request.FILES['image']
+        image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        mime = image_file.content_type
+        content = image_data
+        content_type = f"{mime};base64" if 'base64' not in mime else mime
 
-
-    serializer = EntrySerializer(data=data, context={'request': request})
-
-    # success
-    if serializer.is_valid():
-        serializer.save()
-        return redirect("/social_distribution")
+    if not title.strip():
+        title = content[:80] + ('...' if len(content) > 80 else '')
     
-    # failure
-    return Response(serializer.errors, status=400)
+    TextEntry.objects.create(
+        author=author,
+        title=title,
+        description=description,
+        content=content,
+        content_type=content_type,
+        visibility=visibility,
+        source_type='native',
+        )
+
+    return redirect("/social_distribution")
+
 
 @api_view(['GET'])
 def get_entries(request):
     """
     Get the list of entries on our node
     """
-    entries = TextEntry.objects.filter(is_deleted=False)
-    serializer = EntrySerializer(entries, many=True, context={'request': request})
-    return Response(serializer.data)
+    entries = TextEntry.objects.filter(NOT_DELETED).order_by('-published')
+    page, size, = get_page_args(request)
+    total = entries.count()
+    page_data = paginate_set(entries, page, size)
+    serializer = EntrySerializer(page_data, many=True, context={'request': request})
+    return Response(build_paginated_response("entries", "src", serializer.data, page, size, total))
+
 
 @login_required
 @api_view(['DELETE'])
@@ -353,14 +342,14 @@ def deleteentry(request, entry_id):
 @api_view(['PUT'])
 def editentry(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username, is_deleted=False)
-    new_text = request.data.get('entry_text', '').strip()
+    new_text = request.data.get('content', '').strip()
     new_content_type = request.data.get('content_type', '').strip()
     new_visibility = request.data.get('visibility', '').strip()
 
     if not new_text:
-        return Response({"error": "entry_text is required and cannot be empty."}, status=400)
+        return Response({"error": "content is required and cannot be empty."}, status=400)
 
-    entry.entry_text = new_text
+    entry.content = new_text
     if new_content_type in ['text/plain', 'text/markdown']:
         entry.content_type = new_content_type
     if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
@@ -369,6 +358,7 @@ def editentry(request, entry_id):
 
     serializer = EntrySerializer(entry, context={'request': request})
     return Response(serializer.data, status=200)
+
 
 @login_required
 @api_view(['POST'])
@@ -383,20 +373,87 @@ def add_like(request):
     serializer = LikeSerializer(like, context={'request': request})
     return Response(serializer.data)
 
-@api_view(['GET'])
-def get_likes(request, object_id):
-    likes = Like.objects.filter(object=object_id).order_by('-published')
-    serializer = LikeSerializer(likes, many=True, context={'request': request})
 
-    return Response({
-        "type": "likes",
-        "id": f"{object_id}/likes",
-        "web": f"{object_id}/likes",
-        "page_number": 1,
-        "size": len(serializer.data),
-        "count": len(serializer.data),
-        "src": serializer.data
-    })
+@api_view(['GET', 'POST'])
+def api_entry_likes(request, author_serial, entry_serial):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author)
+
+    if not can_view_entry(request, entry):
+        return Response({"error": "Entry not accessible."}, status=404)
+
+    if request.method == 'GET':
+        page, size = get_page_params(request, default_size=50)
+        likes_qs = Like.objects.filter(object_url=entry.fqid).order_by('-published')
+        total = likes_qs.count()
+        page_data = paginate_queryset(likes_qs, page, size)
+        serializer = LikeSerializer(page_data, many=True, context={'request': request})
+        result = build_paginated_response("likes", "src", serializer.data, page, size, total)
+        result["id"] = f"{entry.fqid}/likes"
+        result["web"] = f"{entry.author.host}/authors/{entry.author.serial}/entries/{entry.pk}"
+        return Response(result)
+
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required."}, status=403)
+
+        liker = get_current_author(request)
+        if entry.visibility == 'FRIENDS':
+            if liker != entry.author and not friends(liker, entry.author):
+                return Response({"error": "Only friends can like this entry."}, status=403)
+
+        existing = Like.objects.filter(author=liker, object_url=entry.fqid).first()
+        if existing:
+            existing.delete()
+            return Response({"success": True, "liked": False})
+
+        like = Like.objects.create(author=liker, object_url=entry.fqid)
+        return Response(LikeSerializer(like, context={'request': request}).data, status=201)
+
+
+
+@api_view(['GET', 'POST'])
+def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author)
+
+    if not can_view_entry(request, entry):
+        return Response({"error": "Entry not accessible."}, status=404)
+
+    for comment in Comment.objects.filter(local_entry=entry):
+        if comment.fqid == comment_fqid:
+            if request.method == 'GET':
+                page, size = get_page_params(request, default_size=50)
+                likes_qs = Like.objects.filter(object_url=comment.fqid).order_by('-published')
+                total = likes_qs.count()
+                page_data = paginate_queryset(likes_qs, page, size)
+                serializer = LikeSerializer(page_data, many=True, context={'request': request})
+                result = build_paginated_response("likes", "src", serializer.data, page, size, total)
+                result["id"] = f"{comment.fqid}/likes"
+                result["web"] = f"{comment.author.host}/authors/{comment.author.serial}/comments/{comment.pk}/likes"
+                return Response(result)
+
+            # CHANGED: POST — toggle like on comment (local)
+            if request.method == 'POST':
+                if not request.user.is_authenticated:
+                    return Response({"error": "Authentication required."}, status=403)
+
+                liker = get_current_author(request)
+                if entry.visibility == 'FRIENDS':
+                    if liker != entry.author and not friends(liker, entry.author):
+                        return Response({"error": "Only friends can like this comment."}, status=403)
+
+                existing = Like.objects.filter(author=liker, object_url=comment.fqid).first()
+                if existing:
+                    existing.delete()
+                    return Response({"success": True, "liked": False})
+
+                like = Like.objects.create(author=liker, object_url=comment.fqid)
+                return Response(LikeSerializer(like, context={'request': request}).data, status=201)
+
+    return Response({"error": "Comment not found."}, status=404)
+
+
 
 @login_required
 @api_view(['POST'])
@@ -454,23 +511,24 @@ def add_like_comment(request, comment_id):
         "success": True,
         "liked": True,
     })
+
+
 @login_required
 def follow_requests(request):
-    author = Author.objects.get(pk=request.user.username)
-
+    author = get_current_author(request)
     requests = Follow.objects.filter(
         following =author,
         approved = False
     )
-
     return render(request, "social_distribution/follow_requests.html", {"requests": requests})
+
 
 @login_required
 def follow_author(request, username):
     if request.method != 'POST':
         return redirect("social_distribution:profile", username=username)
-    current_author = Author.objects.get(pk=request.user.username)
-    target_author = get_object_or_404(Author, pk=username)
+    current_author = get_current_author(request)
+    target_author = get_object_or_404(Author, serial=username)
 
     if current_author != target_author:
         Follow.objects.get_or_create(
@@ -480,54 +538,51 @@ def follow_author(request, username):
         )
     return redirect("social_distribution:profile", username=username)
 
+
 @login_required
 def approve_follow(request, username):
-    current_author = Author.objects.get(pk=request.user.username)
-    follower_author = get_object_or_404(Author, pk=username)
-
+    current_author = get_current_author(request)
+    follower_author = get_object_or_404(Author, serial=username)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
-
     follow.approved = True
     follow.save()
-
     return redirect("social_distribution:follow_requests")
+
+
 
 @login_required
 def reject_follow(request, username):
-    current_author = Author.objects.get(pk=request.user.username)
-    follower_author = get_object_or_404(Author, pk=username)
-
+    current_author = get_current_author(request)
+    follower_author = get_object_or_404(Author, serial=username)
     Follow.objects.filter(
         follower=follower_author,
         following=current_author,
         approved=False
     ).delete()
-
     return redirect("social_distribution:follow_requests")
+
 
 @login_required
 def unfollow(request, username):
     if request.method != 'POST':
         return redirect("social_distribution:index")
-    current_author = Author.objects.get(pk=request.user.username)
-    target_author = get_object_or_404(Author, pk=username)
-
+    current_author = get_current_author(request)
+    target_author = get_object_or_404(Author, serial=username)
     Follow.objects.filter(
         follower=current_author,
         following =target_author
     ).delete()
-
     return redirect("social_distribution:index")
 
 @login_required
 def author_list(request):
-    current_author = Author.objects.get(pk=request.user.username)
-    authors = Author.objects.exclude(url=current_author.url)
+    current_author = get_current_author(request)
+    authors = Author.objects.exclude(serial=current_author.serial)
     return render(request, "social_distribution/author_list.html",{"authors": authors})
 
 @login_required
 def followers_list(request):
-    current_author = Author.objects.get(pk=request.user.username)
+    current_author = get_current_author(request)
 
     followers = Follow.objects.filter(
         following=current_author,
@@ -538,7 +593,7 @@ def followers_list(request):
 
 @login_required
 def following_list(request):
-    current_author = Author.objects.get(pk=request.user.username)
+    current_author = get_current_author(request)
 
     following = Follow.objects.filter(
         follower=current_author,
@@ -547,24 +602,11 @@ def following_list(request):
 
     return render(request, "social_distribution/following_list.html", {"following": following, "author": current_author})
 
-def friends(author1, author2):
-    return(
-        Follow.objects.filter(
-            follower=author1,
-            following=author2,
-            approved=True
-        ).exists()
-        and
-        Follow.objects.filter(
-            follower=author2,
-            following=author1,
-            approved=True
-        ).exists()
-    )
+
 
 @login_required
 def friends_list(request):
-    current_author = Author.objects.get(pk=request.user.username)
+    current_author = get_current_author(request) 
     
     # authors who current_author follows
     following_ids = Follow.objects.filter(
@@ -572,12 +614,13 @@ def friends_list(request):
     ).values_list('following_id', flat=True)
     
     # of those, who also follows current_author back
-    all_friends = Author.objects.filter(url__in=following_ids).filter(
+    all_friends = Author.objects.filter(id__in=following_ids).filter(
         following__following=current_author,
         following__approved=True
         ).distinct()
-
     return render(request, "social_distribution/friends_list.html", {"friends_list": all_friends})
+
+
 
 @api_view(['GET'])
 def get_comments(request, entry_id):
@@ -658,10 +701,10 @@ def entry_get_response(request, username, entry_id):
 
 def entry_delete_response(request, username, entry_id):
     try:
-        Author.objects.get(pk=username)
-        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username, is_deleted=False)
+        author = get_object_or_404(Author, serial=author_serial)
+        entry = get_object_or_404(TextEntry, pk=entry_serial, author=author)
 
-        if not request.user.is_authenticated or request.user.username != username:
+        if not request.user.is_authenticated or request.user.username != author.username:
             return Response({"error": "You must be logged in as the entry owner to delete it."}, status=403)
 
         entry.is_deleted = True
@@ -674,20 +717,20 @@ def entry_delete_response(request, username, entry_id):
     
 def entry_put_response(request, username, entry_id):
     try:
-        Author.objects.get(pk=username)
-        entry = TextEntry.objects.get(pk=entry_id, belonging_url=username, is_deleted=False)
+        author = get_object_or_404(Author, serial=author_serial)
+        entry = get_object_or_404(TextEntry, pk=entry_serial, author=author)
 
-        if not request.user.is_authenticated or request.user.username != username:
+        if not request.user.is_authenticated or request.user.username != author.username:
             return Response({"error": "You must be logged in as the entry owner to edit it."}, status=403)
 
-        new_text = request.data.get('entry_text', '').strip()
+        new_text = request.data.get('content', '').strip()
         new_content_type = request.data.get('content_type', '').strip()
         new_visibility = request.data.get('visibility', '').strip()
 
         if not new_text:
-            return Response({"error": "entry_text is required and cannot be empty."}, status=400)
+            return Response({"error": "content is required and cannot be empty."}, status=400)
 
-        entry.entry_text = new_text
+        entry.content = new_text
         if new_content_type in ['text/plain', 'text/markdown']:
             entry.content_type = new_content_type
         if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
@@ -789,200 +832,486 @@ def public_user_entries(request, username):
 
     pass
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def api_entry_detail(request, entry_id):
-    """
-    GET    /api/entries/{entry_id}/  - retrieve a single entry (respects visibility)
-    PUT    /api/entries/{entry_id}/  - update entry (owner only)
-    DELETE /api/entries/{entry_id}/  - soft-delete entry (owner only)
-    """
-    entry = get_object_or_404(TextEntry, id=entry_id, is_deleted=False)
+@api_view(['POST'])
+def api_inbox(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    obj_type = request.data.get('type', '').lower()
+
+    if obj_type == 'follow':
+        actor = get_or_create_remote_author(request.data.get('actor', {}))
+        if not actor:
+            return Response({"error": "Missing actor id."}, status=400)
+        Follow.objects.get_or_create(follower=actor, following=author, defaults={"approved": False})
+        return Response({"success": True}, status=201)
+
+
+    elif obj_type == 'entry':
+        remote_author = get_or_create_remote_author(request.data.get('author', {}))
+        if not remote_author:
+            return Response({"error": "Missing author id."}, status=400)
+        visibility = request.data.get('visibility', 'PUBLIC')
+        if visibility == 'DELETED':
+            TextEntry.objects.filter(author=remote_author).update(visibility='DELETED')
+            return Response({"success": True}, status=200)
+        TextEntry.objects.update_or_create(
+            author=remote_author,
+            defaults={
+                'title': request.data.get('title', ''),
+                'description': request.data.get('description', ''),
+                'content': request.data.get('content', ''),
+                'content_type': request.data.get('contentType', 'text/plain'),
+                'visibility': visibility,
+            })
+        return Response({"success": True}, status=201)
+
+
+    elif obj_type == 'like':
+        liker = get_or_create_remote_author(request.data.get('author', {}))
+        if not liker:
+            return Response({"error": "Missing author id."}, status=400)
+        object_url = request.data.get('object', '')
+        Like.objects.get_or_create(author=liker, object_url=object_url)
+        return Response({"success": True}, status=201)
+
+    elif obj_type == 'comment':
+        commenter = get_or_create_remote_author(request.data.get('author', {}))
+        if not commenter:
+            return Response({"error": "Missing author id."}, status=400)
+
+        entry_fqid = request.data.get('entry', '')
+        local_entry = None
+        for e in TextEntry.objects.filter(NOT_DELETED):
+            if e.fqid == entry_fqid:
+                local_entry = e
+                break
+
+        Comment.objects.create(
+            author=commenter,
+            entry=entry_fqid,
+            local_entry=local_entry,
+            comment=request.data.get('comment', ''),
+            content_type=request.data.get('contentType', 'text/markdown'),
+        )
+        return Response({"success": True}, status=201)
+
+    return Response({"error": f"Unknown type: {obj_type}"}, status=400)
+
+
+
+
+@api_view(['GET'])
+def api_authors(request):
+    page, size = get_page_args(request)
+    all_authors = Author.objects.all().order_by('serial')
+    total = all_authors.count()
+    page_data = paginate_set(all_authors, page, size)
+    serializer = AuthorSerializer(page_data, many=True, context={'request': request})
+    return Response(build_paginated_response("authors", "authors", serializer.data, page, size, total))
+
+
+@api_view(['GET', 'PUT'])
+def api_single_author(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
 
     if request.method == 'GET':
-        if entry.visibility == 'FRIENDS':
-            if not request.user.is_authenticated:
-                return Response({"error": "Authentication required to view a friends-only entry."}, status=403)
-            viewer = Author.objects.get(pk=request.user.username)
-            entry_author = Author.objects.get(pk=entry.belonging_url)
-            if viewer != entry_author and not friends(viewer, entry_author):
-                return Response({"error": "You are not friends with this author."}, status=403)
-        serializer = EntrySerializer(entry, context={'request': request})
-        return Response(serializer.data)
+        return Response(AuthorSerializer(author, context={'request': request}).data)
 
-    if not request.user.is_authenticated:
-        return Response({"error": "Authentication required."}, status=403)
-    if request.user.username != entry.belonging_url:
-        return Response({"error": "You do not own this entry."}, status=403)
+    if not request.user.is_authenticated or request.user.username != author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
+
+    if 'displayName' in request.data:
+        author.name = request.data['displayName']
+    if 'github' in request.data:
+        author.github = request.data['github']
+    if 'profileImage' in request.data:
+        author.picture = request.data['profileImage']
+    author.save()
+    return Response(AuthorSerializer(author, context={'request': request}).data)
+
+
+@api_view(['GET', 'POST'])
+def api_author_entries(request, author_serial):
+    target_author = get_object_or_404(Author, serial=author_serial)
+
+    if request.method == 'GET':
+        # Visibility logic based on auth status, friendship, follow
+        if not request.user.is_authenticated:
+            entries = TextEntry.objects.filter(author=target_author, visibility="PUBLIC").filter(NOT_DELETED).order_by("-published")
+        elif request.user.username == target_author.username:
+            entries = TextEntry.objects.filter(author=target_author).filter(NOT_DELETED).order_by("-published")
+        else:
+            viewer = get_current_author(request)
+            if friends(target_author, viewer):
+                entries = TextEntry.objects.filter(author=target_author).filter(NOT_DELETED).order_by("-published")
+            elif Follow.objects.filter(follower=viewer, following=target_author, approved=True).exists():
+                entries = TextEntry.objects.filter(author=target_author, visibility__in=["PUBLIC", "UNLISTED"]).filter(NOT_DELETED).order_by("-published")
+            else:
+                entries = TextEntry.objects.filter(author=target_author, visibility="PUBLIC").filter(NOT_DELETED).order_by("-published")
+
+        page, size = get_page_params(request)
+        total = entries.count()
+        page_data = paginate_queryset(entries, page, size)
+        serializer = EntrySerializer(page_data, many=True, context={'request': request})
+        return Response(build_paginated_response("entries", "src", serializer.data, page, size, total))
+
+    # POST — create entry as this author
+    if not request.user.is_authenticated or request.user.username != target_author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
+
+    author = get_current_author(request)
+    title = request.data.get('title', '')
+    content = request.data.get('content', '')
+    description = request.data.get('description', '')
+    content_type = request.data.get('contentType', 'text/plain')
+    visibility = request.data.get('visibility', 'PUBLIC')
+
+    if not title.strip():
+        title = content[:80] + ('...' if len(content) > 80 else '')
+
+    entry = TextEntry.objects.create(
+        author=author, title=title, description=description,
+        content=content, content_type=content_type,
+        visibility=visibility, source_type='native',
+    )
+    return Response(EntrySerializer(entry, context={'request': request}).data, status=201)
+
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def api_author_entry_detail(request, author_serial, entry_serial):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author)
+
+    if request.method == 'GET':
+        if not can_view_entry(request, entry):
+            return Response({"error": "Entry not accessible."}, status=404)
+        return Response(EntrySerializer(entry, context={'request': request}).data)
+
+    if not request.user.is_authenticated or request.user.username != target_author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
 
     if request.method == 'PUT':
-        new_text = request.data.get('entry_text', '').strip()
-        new_content_type = request.data.get('content_type', '').strip()
-        new_visibility = request.data.get('visibility', '').strip()
-
-        if not new_text:
-            return Response({"error": "entry_text is required and cannot be empty."}, status=400)
-
-        entry.entry_text = new_text
-        if new_content_type in ['text/plain', 'text/markdown']:
-            entry.content_type = new_content_type
-        if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
-            entry.visibility = new_visibility
+        if entry.is_deleted:
+            return Response({"error": "Cannot edit a deleted entry."}, status=404)
+        if 'title' in request.data:       entry.title = request.data['title']
+        if 'content' in request.data:     entry.content = request.data['content']
+        if 'description' in request.data: entry.description = request.data['description']
+        if 'contentType' in request.data:
+            ct = request.data['contentType']
+            if ct in ['text/plain', 'text/markdown']: entry.content_type = ct
+        if 'visibility' in request.data:
+            vis = request.data['visibility']
+            if vis in ['PUBLIC', 'FRIENDS', 'UNLISTED']: entry.visibility = vis
         entry.save()
-
-        serializer = EntrySerializer(entry, context={'request': request})
-        return Response(serializer.data, status=200)
+        return Response(EntrySerializer(entry, context={'request': request}).data)
 
     if request.method == 'DELETE':
-        entry.is_deleted = True
+        if entry.is_deleted:
+            return Response({"error": "Already deleted."}, status=404)
+        entry.visibility = 'DELETED'
         entry.save()
         return Response({"success": True, "message": "Entry deleted."}, status=200)
 
 
 @api_view(['GET'])
-def api_authors(request):
-    page_number = int(request.query_params.get('page', 1))
-    size = int(request.query_params.get('size', 10))
-    all_authors = Author.objects.all().order_by('url')
-    total = all_authors.count()
-    start = (page_number - 1) * size
-    end = start + size
-    serializer = AuthorSerializer(all_authors[start:end], many=True, context={'request': request})
-    return Response({
-        "type": "authors",
-        "page_number": page_number,
-        "size": size,
-        "count": total,
-        "authors": serializer.data
-    })
-
-
-@api_view(['GET'])
-def api_author_followers(request, username):
-    author = get_object_or_404(Author, pk=username)
+def api_author_followers(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
     follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
     serializer = AuthorSerializer([f.follower for f in follows], many=True, context={'request': request})
     return Response({"type": "followers", "followers": serializer.data})
 
 
+@api_view(['GET', 'PUT', 'DELETE'])
+def api_author_follower_detail(request, author_serial, foreign_author_fqid):
+    author = get_object_or_404(Author, serial=author_serial)
+
+    if request.method == 'GET':
+        follow = Follow.objects.filter(follower__id=foreign_author_fqid, following=author, approved=True).select_related('follower').first()
+        if not follow:
+            return Response({"error": "Not a follower."}, status=404)
+        return Response(AuthorSerializer(follow.follower, context={'request': request}).data)
+
+    if not request.user.is_authenticated or request.user.username != author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
+
+    if request.method == 'PUT':
+        follow = Follow.objects.filter(follower__id=foreign_author_fqid, following=author).first()
+        if not follow:
+            return Response({"error": "No matching follow request."}, status=404)
+        follow.approved = True
+        follow.save()
+        return Response(AuthorSerializer(follow.follower, context={'request': request}).data)
+
+    if request.method == 'DELETE':
+        deleted_count, _ = Follow.objects.filter(
+            follower__id=foreign_author_fqid, following=author
+        ).delete()
+        if deleted_count == 0:
+            return Response({"error": "No matching follow request or follower."}, status=404)
+        return Response({"success": True}, status=200)
+
+
+
 @api_view(['GET'])
-def api_author_following(request, username):
-    author = get_object_or_404(Author, pk=username)
+def api_author_following(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
     follows = Follow.objects.filter(follower=author, approved=True).select_related('following')
     serializer = AuthorSerializer([f.following for f in follows], many=True, context={'request': request})
     return Response({"type": "following", "following": serializer.data})
 
-@api_view(['GET'])
-def get_entry_image(request, username, entry_id):
-    entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=username, is_deleted=False)
 
-    # return 404 if this entry is not an image
-    if not entry.image:
-        return Response({"error": "This entry does not have an image."}, status=404)
-
-    # friends-only image entries require authentication and friendship
-    if entry.visibility == "FRIENDS":
-        if not request.user.is_authenticated:
-            return Response({"error": "Authentication required."}, status=403)
-        viewer = Author.objects.get(pk=request.user.username)
-        entry_author = Author.objects.get(pk=username)
-        if viewer != entry_author and not friends(viewer, entry_author):
-            return Response({"error": "You are not friends with this author."}, status=403)
-        
-    return FileResponse(entry.image.open('rb'), content_type=entry.content_type)
-
-#
-
-def fetch_github_entries(author): 
-    if not author.github: 
-        logger.warning(f"No github URL for {author.url}")
-        return 
+@api_view(['GET', 'PUT', 'DELETE'])
+def api_author_following_detail(request, author_serial, foreign_author_fqid):
     
-    github_username = author.github.rstrip('/').split('/')[-1]
-    if not github_username:
-        logger.warning(f"Could not parse github username from: {author.github}")
-        return
-    
-    try:
-        response = http_requests.get(
-            f"https://api.github.com/users/{github_username}/events/public",
-            timeout=5,
-            headers={"Accept": "application/vnd.github+json"}
-        )
-        if response.status_code != 200:
-             logger.warning(f"GitHub API returned {response.status_code} for {github_username}")
-             return
-        events = response.json()
-        logger.info(f"Fetched {len(events)} events for {github_username}")
-    except Exception as e:
-        logger.error(f"GitHub fetch failed: {e}")
-        return
+    author = get_object_or_404(Author, serial=author_serial)
 
-    last_polled = author.github_last_polled
-    new_entries = []
+    if not request.user.is_authenticated or request.user.username != author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
 
-    for event in events:
-        # parse the event timestamp
+    if request.method == 'GET':
+        exists = Follow.objects.filter(
+            follower=author, following__id=foreign_author_fqid, approved=True
+        ).exists()
+        if not exists:
+            return Response({"error": "Not following."}, status=404)
+        target = Author.objects.get(id=foreign_author_fqid)
+        return Response(AuthorSerializer(target, context={'request': request}).data)
+
+    if request.method == 'PUT':
         try:
-            from datetime import datetime, timezone as dt_tz
-            event_time = datetime.strptime(
-                event.get("created_at", ""), "%Y-%m-%dT%H:%M:%SZ"
-            ).replace(tzinfo=dt_tz.utc)
-        except Exception:
-            continue
-        
-        if last_polled and event_time <= last_polled:
-            continue
+            target = Author.objects.get(id=foreign_author_fqid)
+        except Author.DoesNotExist:
+            return Response({"error": "Target author not found."}, status=404)
+        follow, created = Follow.objects.get_or_create(
+            follower=author, following=target,
+            defaults={"approved": False}
+        )
+        return Response(FollowSerializer(follow, context={'request': request}).data, status=201 if created else 200)
 
-        event_type = event.get("type", "")
-        repo_name = event.get("repo", {}).get("name", "unknown/repo")
-        payload = event.get("payload", {})
-        
-        if event_type == "PushEvent":
-            commits = payload.get("commits", [])
-            messages = [c.get("message", "") for c in commits[:3]]
-            description = f"Pushed {len(commits)} commit(s) to [{repo_name}](https://github.com/{repo_name}):\n"
-            description += "\n".join(f"- {m}" for m in messages)
+    if request.method == 'DELETE':
+        deleted_count, _ = Follow.objects.filter(
+            follower=author, following__id=foreign_author_fqid
+        ).delete()
+        if deleted_count == 0:
+            return Response({"error": "Not following."}, status=404)
+        return Response({"success": True}, status=200)
 
-        elif event_type == "CreateEvent":
-            ref_type = payload.get("ref_type", "repository")
-            ref = payload.get("ref", "")
-            description = f"Created {ref_type} `{ref}` in [{repo_name}](https://github.com/{repo_name})"
 
-        elif event_type == "IssuesEvent":
-            action = payload.get("action", "")
-            issue = payload.get("issue", {})
-            title = issue.get("title", "")
-            issue_url = issue.get("html_url", "")
-            description = f"{action.capitalize()} issue [{title}]({issue_url}) in [{repo_name}](https://github.com/{repo_name})"
 
-        elif event_type == "PullRequestEvent":
-            action = payload.get("action", "")
-            pr = payload.get("pull_request", {})
-            title = pr.get("title", "")
-            pr_url = pr.get("html_url", "")
-            description = f"{action.capitalize()} pull request [{title}]({pr_url}) in [{repo_name}](https://github.com/{repo_name})"
+@api_view(['GET', 'POST'])
+def api_author_commented(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
 
-        elif event_type == "WatchEvent":
-            description = f"Starred [{repo_name}](https://github.com/{repo_name}) ⭐"
+    if request.method == 'GET':
+        page, size = get_page_params(request, default_size=5)
+        comments_qs = Comment.objects.filter(author=author).order_by('-published')
+        total = comments_qs.count()
+        page_data = paginate_queryset(comments_qs, page, size)
+        serializer = CommentSerializer(page_data, many=True, context={'request': request})
+        return Response(build_paginated_response("comments", "src", serializer.data, page, size, total))
 
-        elif event_type == "ForkEvent":
-            forkee = payload.get("forkee", {}).get("full_name", "")
-            description = f"Forked [{repo_name}](https://github.com/{repo_name}) → [{forkee}](https://github.com/{forkee})"
+    if not request.user.is_authenticated or request.user.username != author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
 
-        else: 
-            continue 
-        
-        new_entries.append(TextEntry(
-            belonging_url=author.url,
-            entry_text=description,
-            content_type='text/markdown',
-            visibility='PUBLIC',
-            pub_date=event_time,
-            source_type='github'
-        ))
+    entry_fqid = request.data.get('entry', '')
+    comment_text = request.data.get('comment', '').strip()
+    content_type = request.data.get('contentType', 'text/markdown')
 
-    if new_entries:
-        TextEntry.objects.bulk_create(new_entries)
+    if not comment_text: return Response({"error": "Missing comment content."}, status=400)
+    if not entry_fqid:   return Response({"error": "Missing entry field."}, status=400)
 
-    author.github_last_polled = timezone.now()
-    author.save(update_fields=['github_last_polled'])
+    local_entry = None
+    for e in TextEntry.objects.filter(NOT_DELETED):
+        if e.fqid == entry_fqid:
+            local_entry = e
+            break
+
+    comment = Comment.objects.create(
+        author=author, entry=entry_fqid, local_entry=local_entry,
+        comment=comment_text, content_type=content_type,
+    )
+    return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
+
+
+@api_view(['GET'])
+def api_author_comment_by_serial(request, author_serial, comment_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    comment = get_object_or_404(Comment, pk=comment_serial, author=author)
+    return Response(CommentSerializer(comment, context={'request': request}).data)
+
+
+@api_view(['GET']) 
+def api_follow_requests(request, author_serial):
+    if not request.user.is_authenticated:
+        return Response({"error": "Must be authenticated."}, status=403)
+
+    author = get_object_or_404(Author, serial=author_serial)
+    if request.user.username != author.username:
+        return Response({"error": "Must be authenticated as this author."}, status=403)
+
+    pending = Follow.objects.filter(following=author, approved=False)
+    serializer = FollowSerializer(pending, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def api_comment_fqid(request, comment_fqid):
+    for comment in Comment.objects.all():
+        if comment.fqid == comment_fqid:
+            return Response(CommentSerializer(comment, context={'request': request}).data)
+    return Response({"error": "Comment not found."}, status=404)
+
+
+@api_view(['GET'])
+def api_author_liked(request, author_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    page, size = get_page_params(request, default_size=50)
+    likes_qs = Like.objects.filter(author=author).order_by('-published')
+    total = likes_qs.count()
+    page_data = paginate_queryset(likes_qs, page, size)
+    serializer = LikeSerializer(page_data, many=True, context={'request': request})
+    return Response(build_paginated_response("likes", "src", serializer.data, page, size, total))
+
+
+@api_view(['GET'])
+def api_author_like_by_serial(request, author_serial, like_serial):
+    author = get_object_or_404(Author, serial=author_serial)
+    like = get_object_or_404(Like, pk=like_serial, author=author)
+    return Response(LikeSerializer(like, context={'request': request}).data)
+
+
+@api_view(['GET'])
+def api_like_fqid(request, like_fqid):
+    for like in Like.objects.all():
+        if like.fqid == like_fqid:
+            return Response(LikeSerializer(like, context={'request': request}).data)
+    return Response({"error": "Like not found."}, status=404)
+
+@api_view(['GET'])
+def api_entry_fqid(request, entry_fqid):
+    for entry in TextEntry.objects.filter(NOT_DELETED):
+        if entry.fqid == entry_fqid:
+            if not can_view_entry(request, entry):
+                return Response({"error": "Entry not accessible."}, status=404)
+            return Response(EntrySerializer(entry, context={'request': request}).data)
+    return Response({"error": "Entry not found."}, status=404)
+
+
+api_view(['GET'])
+def api_entry_fqid_comments(request, entry_fqid):
+    for entry in TextEntry.objects.filter(NOT_DELETED):
+        if entry.fqid == entry_fqid:
+            if not can_view_entry(request, entry):
+                return Response({"error": "Entry not accessible."}, status=404)
+            page, size = get_page_params(request, default_size=5)
+            comments_qs = Comment.objects.filter(local_entry=entry).order_by('-published')
+            total = comments_qs.count()
+            page_data = paginate_queryset(comments_qs, page, size)
+            serializer = CommentSerializer(page_data, many=True, context={'request': request})
+            result = build_paginated_response("comments", "src", serializer.data, page, size, total)
+            result["id"] = f"{entry.fqid}/comments"
+            result["web"] = f"{entry.author.host}/authors/{entry.author.serial}/entries/{entry.pk}"
+            return Response(result)
+    return Response({"error": "Entry not found."}, status=404)
+
+
+@api_view(['GET'])
+def api_entry_fqid_likes(request, entry_fqid):
+    for entry in TextEntry.objects.filter(NOT_DELETED):
+        if entry.fqid == entry_fqid:
+            if not can_view_entry(request, entry):
+                return Response({"error": "Entry not accessible."}, status=404)
+            page, size = get_page_params(request, default_size=50)
+            likes_qs = Like.objects.filter(object_url=entry.fqid).order_by('-published')
+            total = likes_qs.count()
+            page_data = paginate_queryset(likes_qs, page, size)
+            serializer = LikeSerializer(page_data, many=True, context={'request': request})
+            result = build_paginated_response("likes", "src", serializer.data, page, size, total)
+            result["id"] = f"{entry.fqid}/likes"
+            result["web"] = f"{entry.author.host}/authors/{entry.author.serial}/entries/{entry.pk}"
+            return Response(result)
+    return Response({"error": "Entry not found."}, status=404)
+
+
+@api_view(['GET'])
+def api_entry_fqid_image(request, entry_fqid):
+    for entry in TextEntry.objects.all():
+        if entry.fqid == entry_fqid:
+            if not can_view_entry(request, entry):
+                return Response({"error": "Entry not accessible."}, status=404)
+            if not entry.content_type.startswith('image/'):
+                return Response({"error": "Not an image entry."}, status=404)
+            try:
+                image_bytes = base64.b64decode(entry.content)
+                mime = entry.content_type.replace(';base64', '')
+                return HttpResponse(image_bytes, content_type=mime)
+            except Exception:
+                return Response({"error": "Could not decode image."}, status=500)
+    return Response({"error": "Entry not found."}, status=404)
+
+
+@api_view(['GET', 'POST'])
+def api_entry_comments(request, author_serial, entry_serial):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author)
+    if not can_view_entry(request, entry):
+        return Response({"error": "Entry not accessible."}, status=404)
+
+    if request.method == 'GET':
+        page, size = get_page_params(request, default_size=5)
+        comments_qs = Comment.objects.filter(local_entry=entry).order_by('-published')
+        total = comments_qs.count()
+        page_data = paginate_queryset(comments_qs, page, size)
+        serializer = CommentSerializer(page_data, many=True, context={'request': request})
+        result = build_paginated_response("comments", "src", serializer.data, page, size, total)
+        result["id"] = f"{entry.fqid}/comments"
+        result["web"] = f"{entry.author.host}/authors/{entry.author.serial}/entries/{entry.pk}"
+        return Response(result)
+
+    if not request.user.is_authenticated:
+        return Response({"error": "Authentication required."}, status=403)
+    commenter = get_current_author(request)
+    if entry.visibility == 'FRIENDS':
+        if commenter != entry.author and not friends(commenter, entry.author):
+            return Response({"error": "Only friends can comment on this entry."}, status=403)
+    comment_text = request.data.get('comment', '').strip()
+    if not comment_text:
+        return Response({"error": "Missing comment content."}, status=400)
+    comment = Comment.objects.create(
+        author=commenter, entry=entry.fqid, local_entry=entry,
+        comment=comment_text, content_type=request.data.get('contentType', 'text/markdown'),
+    )
+    return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
+
+
+@api_view(['GET'])
+def api_entry_comment_detail(request, author_serial, entry_serial, comment_fqid):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author)
+    if not can_view_entry(request, entry):
+        return Response({"error": "Entry not accessible."}, status=404)
+    for comment in Comment.objects.filter(local_entry=entry):
+        if comment.fqid == comment_fqid:
+            return Response(CommentSerializer(comment, context={'request': request}).data)
+    return Response({"error": "Comment not found."}, status=404)
+
+
+
+@api_view(['GET'])
+def api_entry_image(request, author_serial, entry_serial):
+    target_author = get_object_or_404(Author, serial=author_serial)
+    entry = get_object_or_404(TextEntry, pk=entry_serial, author=target_author) 
+
+    # return 404 if this entry is not an image or not viewable
+    if not can_view_entry(request, entry):
+        return Response({"error": "Entry not accessible"}, status=404)
+
+    if not entry.content_type.startswith('image/'):
+        return Response({"error": "Not an image entry."}, status=404)
+
+    try:
+        image_bytes = base64.b64decode(entry.content)
+        mime = entry.content_type.replace(';base64', '')
+        return HttpResponse(image_bytes, content_type=mime)
+    except Exception:
+        return Response({"error": "Could not decode image."}, status=500)
