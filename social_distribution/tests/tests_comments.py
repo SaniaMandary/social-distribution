@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from social_distribution.models import Author, Comment, Like, TextEntry
 from django.contrib.auth.models import User
 from social_distribution.utils import validate_create_author
+from django.urls import reverse
 
 def make_user_and_author(username="testuser", password="testpass123"):
     """Create a Django auth user plus a matching Author record."""
@@ -40,60 +41,61 @@ class CommentTest(TestCase):
 
     def test_add_comment(self):
         comment_data = {
+            'entry': self.entry.fqid,
             "comment": "This is a test comment",
             "contentType": "text/markdown"
         }
+        
+        url = reverse("social_distribution:api_author_commented", args=[self.author.serial])
         response = self.client.post(
-            f"/social_distribution/api/entries/{self.entry.pk}/comments/add/",
+            url,
             data=comment_data,
             content_type="application/json"
         )
         self.assertEqual(response.status_code, 201)
 
         # Verify the comment was created in the database
-        comment = Comment.objects.filter(entry=self.entry, author=self.author).first()
+        comment = Comment.objects.filter(entry=self.entry.fqid, author=self.author).first()
         assert comment is not None
-        self.assertEqual(comment.content, comment_data["comment"])
+        self.assertEqual(comment.comment, comment_data["comment"])
         self.assertEqual(comment.content_type, comment_data["contentType"])
 
     def test_get_comments(self):
         # Create a comment to retrieve
         comment = Comment.objects.create(
-            author=self.author,
-            entry=self.entry,
-            content="This is a test comment",
-            content_type="text/markdown"
+            author=self.author, entry=self.entry.fqid, local_entry=self.entry,
+            comment="This is a test comment", content_type="text/markdown"
         )
 
-        response = self.client.get(f"/social_distribution/api/entries/{self.entry.pk}/comments/")
+        url = reverse("social_distribution:api_entry_comments", args=[self.author.serial, self.entry.pk])
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
         data = response.json()
         self.assertEqual(data.get("type"), "comments")
         comments = data.get("src", [])  # Response uses 'src' not 'comments'
         self.assertEqual(len(comments), 1)
-        self.assertEqual(comments[0]["content"], comment.content)
-        self.assertEqual(comments[0]["content_type"], comment.content_type)
-        self.assertEqual(comments[0]["author"]["url"], self.author.url)
+        self.assertEqual(comments[0]["comment"], comment.comment)
+        self.assertEqual(comments[0]["contentType"], comment.content_type)
+        self.assertEqual(comments[0]["author"]["id"], self.author.id)
         self.assertEqual(comments[0]["author"]["displayName"], self.author.name)
         self.assertIn("published", comments[0])
 
     def test_like_comment(self):
-        # Create a comment to like
+        # Create a comment to like  
         comment = Comment.objects.create(
-            author=self.author,
-            entry=self.entry,
-            content="This is a test comment",
-            content_type="text/markdown"
+            author=self.author, entry=self.entry.fqid, local_entry=self.entry,
+            comment="This is a test comment", content_type="text/markdown"
         )
 
-        response = self.client.post(f"/social_distribution/api/comments/{comment.pk}/likes/", follow=True)
-        self.assertEqual(response.status_code, 200)
+        url = reverse("social_distribution:api_comment_likes", args=[self.author.serial, self.entry.pk, comment.fqid])
+        response = self.client.post(url, follow=True)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
-        self.assertTrue(data.get("success"))
-        self.assertTrue(data.get("liked"))
+        self.assertTrue(data.get("type")=='like')
+        self.assertTrue(data.get("id"))
 
         # Verify the like was created with correct URL format
-        liked_object = f"http://testserver/social_distribution/comments/{comment.pk}"
-        like_exists = Like.objects.filter(object=liked_object, author=self.author).exists()
+        like_exists = Like.objects.filter(object_url=comment.fqid, author=self.author).exists()
         self.assertTrue(like_exists)    
     

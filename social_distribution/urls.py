@@ -81,12 +81,12 @@ urlpatterns = [
     # path("api/authors/<str:username>/entries/<int:entry_id>", views.public_user_entry, name="public_user_entry"), -> api_author_entry_detail
     # path("api/entries/<int:entry_id>", views.public_get_entry, name="public_get_entry"), -> api_entry_fqid
     # path("api/authors/<str:username>/entries/", views.public_user_entries, name="public_user_entries"), -> api_author_entries
-    # path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"),
-    # path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"),
-    # path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"),
+    # path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"), -> api_comment_likes
+    # path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"), -> api_author_commented post
+    # path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"), -> api_entry_comments
     # path("api/entries/<int:entry_id>/", views.api_entry_detail, name="api_entry_detail"),
     # path("api/authors/<str:username>/entries/<int:entry_id>/image", views.get_entry_image, name="get_entry_image"),
-    # path("api/likes/add/<int:entry_id>/", views.add_like_entry, name="add_like_entry"),
+    # path("api/likes/add/<int:entry_id>/", views.add_like_entry, name="add_like_entry"), -> api_entry_likes
     # path("api/likes/", views.add_like, name="add_like"),
     # path("api/likes/<path:object_id>/", views.get_likes, name="get_likes"),
 ]

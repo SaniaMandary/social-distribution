@@ -841,7 +841,7 @@ def api_inbox(request, author_serial):
     obj_type = request.data.get('type', '').lower()
 
     if obj_type == 'follow':
-        actor = get_or_create_remote_author(request.data.get('actor', {}))
+        actor = fetch_remote_author(request.data.get('actor', {}))
         if not actor:
             return Response({"error": "Missing actor id."}, status=400)
         Follow.objects.get_or_create(follower=actor, following=author, defaults={"approved": False})
@@ -849,7 +849,7 @@ def api_inbox(request, author_serial):
 
 
     elif obj_type == 'entry':
-        remote_author = get_or_create_remote_author(request.data.get('author', {}))
+        remote_author = fetch_remote_author(request.data.get('author', {}))
         if not remote_author:
             return Response({"error": "Missing author id."}, status=400)
         visibility = request.data.get('visibility', 'PUBLIC')
@@ -869,7 +869,7 @@ def api_inbox(request, author_serial):
 
 
     elif obj_type == 'like':
-        liker = get_or_create_remote_author(request.data.get('author', {}))
+        liker = fetch_remote_author(request.data.get('author', {}))
         if not liker:
             return Response({"error": "Missing author id."}, status=400)
         object_url = request.data.get('object', '')
@@ -877,7 +877,7 @@ def api_inbox(request, author_serial):
         return Response({"success": True}, status=201)
 
     elif obj_type == 'comment':
-        commenter = get_or_create_remote_author(request.data.get('author', {}))
+        commenter = fetch_remote_author(request.data.get('author', {}))
         if not commenter:
             return Response({"error": "Missing author id."}, status=400)
 
