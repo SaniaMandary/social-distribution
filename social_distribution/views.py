@@ -531,7 +531,7 @@ def follow_author(request, username):
     if request.method != 'POST':
         return redirect("social_distribution:profile", username=username)
     current_author = get_current_author(request)
-    target_author = get_object_or_404(Author, serial=username)
+    target_author = get_object_or_404(Author, username=username)
 
     if current_author != target_author:
         Follow.objects.get_or_create(
@@ -545,7 +545,7 @@ def follow_author(request, username):
 @login_required
 def approve_follow(request, username):
     current_author = get_current_author(request)
-    follower_author = get_object_or_404(Author, serial=username)
+    follower_author = get_object_or_404(Author, username=username)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
     follow.approved = True
     follow.save()
@@ -570,7 +570,7 @@ def unfollow(request, username):
     if request.method != 'POST':
         return redirect("social_distribution:index")
     current_author = get_current_author(request)
-    target_author = get_object_or_404(Author, serial=username)
+    target_author = get_object_or_404(Author, username=username)
     Follow.objects.filter(
         follower=current_author,
         following =target_author

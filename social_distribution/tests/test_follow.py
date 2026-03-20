@@ -3,6 +3,7 @@ from django.urls import reverse
 from social_distribution.models import Author, Follow, TextEntry
 from django.contrib.auth.models import User
 from social_distribution.views import friends
+from social_distribution.utils import validate_create_author
 
 class FollowingAuthorsTests(TestCase):
     def setUp(self):
@@ -10,16 +11,20 @@ class FollowingAuthorsTests(TestCase):
         self.user1 = User.objects.create_user(username="user2", password="pass2")
         self.user1 = User.objects.create_user(username="user3", password="pass3")
 
-        self.author1 = Author.objects.create(url="user1", name="user 1")
-        self.author2 = Author.objects.create(url="user2", name="user 2")
-        self.author3 = Author.objects.create(url="user3", name="user 3")
+        validate_create_author("user1", "localhost")
+        validate_create_author("user2", "localhost")
+        validate_create_author("user3", "localhost")
+
+        self.author1 = Author.objects.get(username="user1")
+        self.author2 = Author.objects.get(username="user2")
+        self.author3 = Author.objects.get(username="user3")
 
         self.client = Client()
     
     def test_follow_request_approval(self):
         #user2 follows user1
         self.client.login(username='user2', password='pass2')
-        response = self.client.get(reverse('social_distribution:follow_author', args=['user1']))
+        response = self.client.post(reverse('social_distribution:follow_author', args=['user1']))
         self.assertEqual(response.status_code, 302)
 
         #check that follow request exists and not approved
@@ -37,7 +42,7 @@ class FollowingAuthorsTests(TestCase):
         Follow.objects.create(follower=self.author2, following=self.author1, approved=True)
 
         self.client.login(username='user2', password='pass2')
-        response = self.client.get(reverse('social_distribution:unfollow', args=['user1']))
+        response = self.client.post(reverse('social_distribution:unfollow', args=['user1']))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Follow.objects.filter(follower=self.author2, following=self.author1).exists())
 
@@ -57,8 +62,8 @@ class FollowingAuthorsTests(TestCase):
 
         #create friends only post
         friends_entry = TextEntry.objects.create(
-            belonging_url='user1',
-            entry_text='Friends only post',
+            author=self.author1,
+            content='Friends only post',
             visibility='FRIENDS'
         )
 
