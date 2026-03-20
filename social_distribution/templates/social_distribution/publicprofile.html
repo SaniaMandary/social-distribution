@@ -12,7 +12,7 @@
     <nav class="nav-bar">
         {% if picture_url %}
          <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
-         { else } 
+        {% else %} 
          <abbr class="default_avatar"></abbr>
         {% endif %}
         <h1>{{author}}'s Page</h1>
