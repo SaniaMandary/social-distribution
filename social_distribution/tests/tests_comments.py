@@ -2,27 +2,27 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from social_distribution.models import Author, Comment, Like, TextEntry
 from django.contrib.auth.models import User
-
+from social_distribution.utils import validate_create_author
 
 def make_user_and_author(username="testuser", password="testpass123"):
     """Create a Django auth user plus a matching Author record."""
     user = User.objects.create_user(username=username, password=password)
-    author = Author.objects.create(
-        url=username,
-        name=username,
-        description="",
-        picture="",
-        github="",
-    )
+
+    validate_create_author(username, "localhost")
+    
+    author = Author.objects.get(username=username)
+
     return user, author
 
 def make_entry(author, text="Hello world", visibility="PUBLIC", is_deleted=False):
     """Create and return a TextEntry owned by author."""
+    if is_deleted:
+        visibility = "DELETED"
+
     return TextEntry.objects.create(
-        belonging_url=author.url,
-        entry_text=text,
+        author=author,
+        content=text,
         visibility=visibility,
-        is_deleted=is_deleted,
     )
 
 def get_entry_ids(response, context_key="latest_entry_list"):

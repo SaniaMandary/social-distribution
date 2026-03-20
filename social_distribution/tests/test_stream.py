@@ -105,25 +105,25 @@ class TestSelfStreamVisibility(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_api_entry_fqid(self):
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'public test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'unlisted test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'friends test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 404)
@@ -131,7 +131,7 @@ class TestSelfStreamVisibility(TestCase):
     def test_api_author_entries(self):
         url = reverse("social_distribution:api_author_entries", args=[self.author1.serial])
         response = self.client.get(url)
-        self.assertEqual(len(response.json()), 3) # got 3 entries back?
+        self.assertEqual(response.json()['count'], 3) # got 3 entries back?
         self.assertEqual(response.status_code, 200)
 
 # tests api for visibility as a non-signed in user
@@ -165,7 +165,7 @@ class TestAnonymousStreamVisibility(TestCase):
         url = reverse("social_distribution:api_author_entry_detail", args=[self.author1.serial,self.e3.pk])
         response = self.client.get(url)
         data = response.json()
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
         url = reverse("social_distribution:api_author_entry_detail", args=[self.author1.serial,self.e4.pk])
         response = self.client.get(url)
@@ -173,24 +173,24 @@ class TestAnonymousStreamVisibility(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_api_entry_fqid(self):
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'public test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'unlisted test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.fqid])
         response = self.client.get(url)
         data = response.json()
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 404)
@@ -198,7 +198,7 @@ class TestAnonymousStreamVisibility(TestCase):
     def test_api_author_entries(self):
         url = reverse("social_distribution:api_author_entries", args=[self.author1.serial])
         response = self.client.get(url)
-        self.assertEqual(len(response.json()), 1) # got only public entries back?
+        self.assertEqual(response.json()['count'], 1) # got only public entries back?
         self.assertEqual(response.status_code, 200)
 
 # tests api for visibility as a follower of another user that posts stuff
@@ -237,7 +237,7 @@ class TestFollowerStreamVisibility(TestCase):
         url = reverse("social_distribution:api_author_entry_detail", args=[self.author1.serial,self.e3.pk])
         response = self.client.get(url)
         data = response.json()
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
         url = reverse("social_distribution:api_author_entry_detail", args=[self.author1.serial,self.e4.pk])
         response = self.client.get(url)
@@ -245,24 +245,24 @@ class TestFollowerStreamVisibility(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_api_entry_fqid(self):
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'public test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'unlisted test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.fqid])
         response = self.client.get(url)
         data = response.json()
-        self.assertEqual(response.status_code, 200) # only need to be authenticated to access friend post via this api
+        self.assertEqual(response.status_code, 404)
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 404)
@@ -270,7 +270,7 @@ class TestFollowerStreamVisibility(TestCase):
     def test_api_author_entries(self):
         url = reverse("social_distribution:api_author_entries", args=[self.author1.serial])
         response = self.client.get(url)
-        self.assertEqual(len(response.json()), 2) # got only public+unlisted entries back?
+        self.assertEqual(response.json()['count'], 2) # got only public+unlisted entries back?
         self.assertEqual(response.status_code, 200)
         
 # tests api for visibility as a friend of another user that posts stuff
@@ -318,24 +318,24 @@ class TestFriendsStreamVisibility(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_api_entry_fqid(self):
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e1.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'public test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e2.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['content'], 'unlisted test entry')
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e3.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 200) 
 
-        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.pk])
+        url = reverse("social_distribution:api_entry_fqid", args=[self.e4.fqid])
         response = self.client.get(url)
         data = response.json()
         self.assertEqual(response.status_code, 404)
@@ -343,5 +343,5 @@ class TestFriendsStreamVisibility(TestCase):
     def test_api_author_entries(self):
         url = reverse("social_distribution:api_author_entries", args=[self.author1.serial])
         response = self.client.get(url)
-        self.assertEqual(len(response.json()), 3) # got only public+unlisted+friends entries back?
+        self.assertEqual(response.json()['count'], 3) # got only public+unlisted+friends entries back?
         self.assertEqual(response.status_code, 200)

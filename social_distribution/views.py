@@ -386,10 +386,10 @@ def api_entry_likes(request, author_serial, entry_serial):
         return Response({"error": "Entry not accessible."}, status=404)
 
     if request.method == 'GET':
-        page, size = get_page_params(request, default_size=50)
+        page, size = get_page_args(request, default_size=50)
         likes_qs = Like.objects.filter(object_url=entry.fqid).order_by('-published')
         total = likes_qs.count()
-        page_data = paginate_queryset(likes_qs, page, size)
+        page_data = paginate_set(likes_qs, page, size)
         serializer = LikeSerializer(page_data, many=True, context={'request': request})
         result = build_paginated_response("likes", "src", serializer.data, page, size, total)
         result["id"] = f"{entry.fqid}/likes"
@@ -426,10 +426,10 @@ def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
     for comment in Comment.objects.filter(local_entry=entry):
         if comment.fqid == comment_fqid:
             if request.method == 'GET':
-                page, size = get_page_params(request, default_size=50)
+                page, size = get_page_args(request, default_size=50)
                 likes_qs = Like.objects.filter(object_url=comment.fqid).order_by('-published')
                 total = likes_qs.count()
-                page_data = paginate_queryset(likes_qs, page, size)
+                page_data = paginate_set(likes_qs, page, size)
                 serializer = LikeSerializer(page_data, many=True, context={'request': request})
                 result = build_paginated_response("likes", "src", serializer.data, page, size, total)
                 result["id"] = f"{comment.fqid}/likes"
@@ -1107,10 +1107,10 @@ def api_author_commented(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
 
     if request.method == 'GET':
-        page, size = get_page_params(request, default_size=5)
+        page, size = get_page_args(request, default_size=5)
         comments_qs = Comment.objects.filter(author=author).order_by('-published')
         total = comments_qs.count()
-        page_data = paginate_queryset(comments_qs, page, size)
+        page_data = paginate_set(comments_qs, page, size)
         serializer = CommentSerializer(page_data, many=True, context={'request': request})
         return Response(build_paginated_response("comments", "src", serializer.data, page, size, total))
 
@@ -1169,10 +1169,10 @@ def api_comment_fqid(request, comment_fqid):
 @api_view(['GET'])
 def api_author_liked(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
-    page, size = get_page_params(request, default_size=50)
+    page, size = get_page_args(request, default_size=50)
     likes_qs = Like.objects.filter(author=author).order_by('-published')
     total = likes_qs.count()
-    page_data = paginate_queryset(likes_qs, page, size)
+    page_data = paginate_set(likes_qs, page, size)
     serializer = LikeSerializer(page_data, many=True, context={'request': request})
     return Response(build_paginated_response("likes", "src", serializer.data, page, size, total))
 
@@ -1207,10 +1207,10 @@ def api_entry_fqid_comments(request, entry_fqid):
         if entry.fqid == entry_fqid:
             if not can_view_entry(request, entry):
                 return Response({"error": "Entry not accessible."}, status=404)
-            page, size = get_page_params(request, default_size=5)
+            page, size = get_page_args(request, default_size=5)
             comments_qs = Comment.objects.filter(local_entry=entry).order_by('-published')
             total = comments_qs.count()
-            page_data = paginate_queryset(comments_qs, page, size)
+            page_data = paginate_set(comments_qs, page, size)
             serializer = CommentSerializer(page_data, many=True, context={'request': request})
             result = build_paginated_response("comments", "src", serializer.data, page, size, total)
             result["id"] = f"{entry.fqid}/comments"
@@ -1225,10 +1225,10 @@ def api_entry_fqid_likes(request, entry_fqid):
         if entry.fqid == entry_fqid:
             if not can_view_entry(request, entry):
                 return Response({"error": "Entry not accessible."}, status=404)
-            page, size = get_page_params(request, default_size=50)
+            page, size = get_page_args(request, default_size=50)
             likes_qs = Like.objects.filter(object_url=entry.fqid).order_by('-published')
             total = likes_qs.count()
-            page_data = paginate_queryset(likes_qs, page, size)
+            page_data = paginate_set(likes_qs, page, size)
             serializer = LikeSerializer(page_data, many=True, context={'request': request})
             result = build_paginated_response("likes", "src", serializer.data, page, size, total)
             result["id"] = f"{entry.fqid}/likes"
@@ -1262,10 +1262,10 @@ def api_entry_comments(request, author_serial, entry_serial):
         return Response({"error": "Entry not accessible."}, status=404)
 
     if request.method == 'GET':
-        page, size = get_page_params(request, default_size=5)
+        page, size = get_page_args(request, default_size=5)
         comments_qs = Comment.objects.filter(local_entry=entry).order_by('-published')
         total = comments_qs.count()
-        page_data = paginate_queryset(comments_qs, page, size)
+        page_data = paginate_set(comments_qs, page, size)
         serializer = CommentSerializer(page_data, many=True, context={'request': request})
         result = build_paginated_response("comments", "src", serializer.data, page, size, total)
         result["id"] = f"{entry.fqid}/comments"
