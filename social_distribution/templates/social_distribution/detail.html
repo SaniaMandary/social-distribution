@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         {% for comment in comments %}
             <li>
                 <strong>{{ comment.author.name }}</strong> ({{ comment.published|date:"M d, Y H:i" }}):
-                {{ comment.content }}
+                {{ comment.comment }}
                 {% if request.user.is_authenticated %}
                 <br>
                 <button class="comment-like-button" 
