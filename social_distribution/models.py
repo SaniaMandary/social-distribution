@@ -126,3 +126,9 @@ class Comment(models.Model):
     @property 
     def fqid(self):
         return f"{self.author.fqid}/commented/{self.pk}"
+
+class Node(models.Model):
+    url = models.URLField(max_length=500, unique=True)
+    username = models.CharField(max_length=150, blank=True, default='')
+    password = models.CharField(max_length=150, blank=True, default='')
+    is_enabled = models.BooleanField(default=False)

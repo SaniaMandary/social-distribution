@@ -10,6 +10,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("newentry/",views.newentry_view,name="newentry"),
     path("changeprofile/",views.changeprofile_view,name="changeprofile"),
+    path("nodes/", views.nodes_view, name="nodes"),
 
     #Web UI - Social (Follow, Unfollow)
     path("follow/<str:username>/", views.follow_author, name="follow_author"),

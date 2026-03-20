@@ -16,7 +16,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 # django objects 
 from .forms import TextEntryForm, ChangeProfileForm
-from .models import Like, TextEntry, Author, Follow, Comment
+from .models import Like, TextEntry, Author, Follow, Comment, Node
 # serializers
 from .serializers import (
     EntrySerializer, AuthorSerializer, LikeSerializer, 
@@ -28,7 +28,7 @@ from .utils import (
     author_exists, validate_create_author, friends,
     fetch_remote_author, can_view_entry, render_markdown_entries,
     get_page_args, paginate_set, build_paginated_response,
-    fetch_github_entries,
+    fetch_github_entries, remote_node_get
 )
 
 logger = logging.getLogger(__name__)
@@ -226,6 +226,22 @@ def changeprofile_view(request):
         'picture' : author.picture, 'github' : author.github 
     })
 
+def nodes_view(request):
+    dataToSend = { "nodetuples": [] }
+    nodes = Node.objects.all()
+
+    for node in nodes:
+        try:
+            response = remote_node_get(node, "api/authors/", auth_required=True)
+            author_count = response.json().get("count", "N/A") if response.status_code == 200 else "N/A"
+            status = str(response.status_code) + " | " + str(response.reason) + " | Authors: " + str(author_count)
+            dataToSend["nodetuples"].append((node, status))
+            print(f"Checked node {node.url}: {response.status_code}")
+        except Exception as e:
+            print("ERROR checking node", node.url, ":", str(e))
+            dataToSend["nodetuples"].append((node, f"Error: {str(e)}"))
+
+    return render(request, "social_distribution/nodes.html", dataToSend)
 
 # API CALLABLE
     

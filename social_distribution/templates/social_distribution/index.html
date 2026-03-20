@@ -12,6 +12,7 @@
     <nav class="nav-bar">
         <img id="profile_picture" src="{{picture_url}}" style="max-width: 64px;">
         <h1>Welcome {{author}}</h1>
+        <a href="{% url 'social_distribution:nodes' %}">Nodes</a>
         <a href="{% url 'social_distribution:profile' public_url %}">Public Page</a>
         <a href="{% url 'social_distribution:newentry' %}">New Entry</a>
         <a href="{% url 'social_distribution:changeprofile' %}">Edit Profile</a>

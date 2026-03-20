@@ -1,10 +1,12 @@
 import base64 
 import logging
 import uuid
+from django.http import HttpResponse
 import requests as http_requests
 from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timezone as dt_tz
+from rest_framework.response import Response
 from .models import Like, Comment, TextEntry, Author, Follow
 
 logger = logging.getLogger(__name__)
@@ -250,3 +252,20 @@ def fetch_github_entries(author, cooldown):
 
     author.github_last_polled = timezone.now()
     author.save(update_fields=['github_last_polled'])
+
+# make a get request to a node with optional auth, used for fetching remote data from other nodes.
+def remote_node_get(node, endpoint: str, auth_required=True):
+    if not node.is_enabled:
+        response = HttpResponse(
+            "Node is disabled", 
+            status=503, 
+            reason="Node is disabled"
+        )
+        response.reason = "Node is disabled"
+        return response
+
+    
+    if auth_required:
+        return http_requests.get(node.url + endpoint, auth=(node.username, node.password), timeout=5)
+    else:
+        return http_requests.get(node.url + endpoint, timeout=5)
