@@ -951,9 +951,9 @@ def api_author_entries(request, author_serial):
             else:
                 entries = TextEntry.objects.filter(author=target_author, visibility="PUBLIC").filter(NOT_DELETED).order_by("-published")
 
-        page, size = get_page_params(request)
+        page, size = get_page_args(request)
         total = entries.count()
-        page_data = paginate_queryset(entries, page, size)
+        page_data = paginate_set(entries, page, size)
         serializer = EntrySerializer(page_data, many=True, context={'request': request})
         return Response(build_paginated_response("entries", "src", serializer.data, page, size, total))
 
