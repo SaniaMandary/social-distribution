@@ -40,13 +40,14 @@ class TextEntry(models.Model):
         ('PUBLIC', 'Public'),
         ('FRIENDS', 'Friends'),
         ('UNLISTED', 'Unlisted'),
+        ('DELETED', 'Deleted'),
     ]
     # Should implement a primary key variable for any specific entry. 
     #belonging_url --> author
     # entry_header --> title 
     # entry_text --> content 
     # pub_date --> published 
-    # is_deleted --> deleted 
+    # is_deleted --> deleted (now conveyed through visibility field)
 
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="entries")
     title = models.CharField(max_length=250, default='')

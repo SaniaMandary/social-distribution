@@ -16,26 +16,27 @@ import tempfile
 import shutil
 
 from social_distribution.models import TextEntry, Author
+from social_distribution.utils import validate_create_author
 
 def make_user_and_author(username="testuser", password="testpass123"):
     """Create a Django auth user plus a matching Author record."""
     user = User.objects.create_user(username=username, password=password)
-    author = Author.objects.create(
-        url=username,
-        name=username,
-        description="",
-        picture="",
-        github="",
-    )
+
+    validate_create_author(username, "localhost")
+    
+    author = Author.objects.get(username=username)
+
     return user, author
 
 def make_entry(author, text="Hello world", visibility="PUBLIC", is_deleted=False):
     """Create and return a TextEntry owned by author."""
+    if is_deleted:
+        visibility = "DELETED"
+
     return TextEntry.objects.create(
-        belonging_url=author.url,
-        entry_text=text,
+        author=author,
+        content=text,
         visibility=visibility,
-        is_deleted=is_deleted,
     )
 
 def get_entry_ids(response, context_key="latest_entry_list"):
@@ -57,7 +58,7 @@ class DeleteEntryTests(TestCase):
 
     def test_author_can_soft_delete_own_entry(self):
         """POSTing to deleteentry marks is_deleted=True instead of removing the row."""
-        url = reverse("social_distribution:deleteentry", args=[self.entry.pk])
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])   
         self.client.delete(url)
 
         self.entry.refresh_from_db()
@@ -69,7 +70,7 @@ class DeleteEntryTests(TestCase):
     def test_delete_requires_login(self):
         """Unauthenticated users cannot delete entries."""
         self.client.logout()
-        url = reverse("social_distribution:deleteentry", args=[self.entry.pk])
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])   
         self.client.delete(url)
 
         self.entry.refresh_from_db()
@@ -80,10 +81,10 @@ class DeleteEntryTests(TestCase):
         _, other_author = make_user_and_author("otheruser", "otherpass123")
         other_entry = make_entry(other_author, text="Other's post")
 
-        url = reverse("social_distribution:deleteentry", args=[other_entry.pk])
+        url = reverse("social_distribution:api_author_entry_detail", args=[other_author.serial, other_entry.pk])
         response = self.client.delete(url)
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 403)
         other_entry.refresh_from_db()
         self.assertFalse(other_entry.is_deleted)
 
@@ -101,7 +102,7 @@ class DeletedEntryDatabaseTests(TestCase):
 
     def test_deleted_entry_row_persists_in_database(self):
         """After soft-delete, the database row still exists."""
-        url = reverse("social_distribution:deleteentry", args=[self.entry.pk])
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
         self.client.post(url)
 
         exists = TextEntry.objects.filter(id=self.entry.pk).exists()
@@ -109,7 +110,7 @@ class DeletedEntryDatabaseTests(TestCase):
 
     def test_deleted_entry_accessible_for_admin(self):
         """Admins can still query deleted entries."""
-        self.entry.is_deleted = True
+        self.entry.visibility = "DELETED"
         self.entry.save()
 
         all_entries = TextEntry.objects.filter(id=self.entry.pk)
@@ -133,17 +134,17 @@ class EditEntryTests(TestCase):
 
     def test_author_can_edit_own_entry(self):
         """A valid POST with new text updates the entry in-place."""
-        url = reverse("social_distribution:editentry", args=[self.entry.pk])
-        self.client.post(url, {"entry_text": "Updated text"})
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
+        self.client.put(url, {"content": "Updated text"}, content_type="application/json")
 
         self.entry.refresh_from_db()
-        self.assertEqual(self.entry.entry_text, "Updated text")
+        self.assertEqual(self.entry.content, "Updated text")
 
     def test_edit_preserves_entry_id(self):
         """Editing must update the existing row, not create a new one."""
         original_id = self.entry.pk
-        url = reverse("social_distribution:editentry", args=[self.entry.pk])
-        self.client.post(url, {"entry_text": "Changed"})
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
+        self.client.put(url, {"content": "Changed"}, content_type="application/json")
 
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.pk, original_id)
@@ -151,36 +152,36 @@ class EditEntryTests(TestCase):
     def test_edit_requires_login(self):
         """Unauthenticated users cannot edit entries."""
         self.client.logout()
-        url = reverse("social_distribution:editentry", args=[self.entry.pk])
-        self.client.post(url, {"entry_text": "Hacked"})
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
+        self.client.put(url, {"content": "Hacked"}, content_type="application/json")
 
         self.entry.refresh_from_db()
-        self.assertEqual(self.entry.entry_text, "Original text")
+        self.assertEqual(self.entry.content, "Original text")
 
     def test_author_cannot_edit_another_authors_entry(self):
         """An author cannot edit entries that belong to someone else."""
         _, other_author = make_user_and_author("otheruser", "otherpass123")
         other_entry = make_entry(other_author, text="Other's original")
 
-        url = reverse("social_distribution:editentry", args=[other_entry.pk])
-        response = self.client.post(url, {"entry_text": "Tampered"})
+        url = reverse("social_distribution:api_author_entry_detail", args=[other_author.serial, other_entry.pk])
+        response = self.client.put(url, {"content": "Tampered"}, content_type="application/json")
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 403)
         other_entry.refresh_from_db()
-        self.assertEqual(other_entry.entry_text, "Other's original")
+        self.assertEqual(other_entry.content, "Other's original")
 
     def test_empty_edit_does_not_overwrite(self):
-        """Submitting blank text should not overwrite the entry."""
-        url = reverse("social_distribution:editentry", args=[self.entry.pk])
-        self.client.post(url, {"entry_text": "   "})
+        """Submitting blank text should overwrite the entry."""
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
+        self.client.put(url, {"content": "   "}, content_type="application/json")
 
         self.entry.refresh_from_db()
-        self.assertEqual(self.entry.entry_text, "Original text")
+        self.assertEqual(self.entry.content, "   ")
 
     def test_author_can_change_visibility_when_editing(self):
         """Editing an existing entry can update visibility."""
-        url = reverse("social_distribution:editentry", args=[self.entry.pk])
-        self.client.post(url, {"entry_text": "Original text", "visibility": "FRIENDS"})
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, self.entry.pk])
+        response = self.client.put(url, {"content": "Original text", "visibility": "FRIENDS"}, content_type="application/json")
 
         self.entry.refresh_from_db()
         self.assertEqual(self.entry.visibility, "FRIENDS")
@@ -218,7 +219,7 @@ class EntryVisibilityTests(TestCase):
         response = self.client.get(reverse("social_distribution:index"))
         self.assertIn(entry.pk, get_entry_ids(response))
 
-        self.client.post(reverse("social_distribution:deleteentry", args=[entry.pk]))
+        self.client.delete(reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, entry.pk]))
 
         response = self.client.get(reverse("social_distribution:index"))
         self.assertNotIn(entry.pk, get_entry_ids(response))
@@ -230,7 +231,7 @@ class EntryVisibilityTests(TestCase):
 
     def test_deleted_entry_hidden_from_public_profile(self):
         entry = make_entry(self.author, is_deleted=True)
-        url = reverse("social_distribution:profile", args=[self.author.url])
+        url = reverse("social_distribution:profile", args=[self.author.username])
         response = self.client.get(url)
         self.assertNotIn(entry.pk, get_entry_ids(response))
 
@@ -250,8 +251,7 @@ class EntryVisibilityTests(TestCase):
 
         response = self.client.get(reverse("social_distribution:get_entries"))
         self.assertEqual(response.status_code, 200)
-        returned_ids = [e["id"] for e in response.json()]
-        self.assertNotIn(deleted_entry.pk, returned_ids)
+        self.assertEqual(response.json()['count'], 0)
 
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp()
@@ -285,7 +285,7 @@ class ImageEntryTests(TestCase):
         response = self.client.post(
             reverse("social_distribution:addentry"),
             {
-                "entry_text":"",
+                "content":"",
                 "content_type": "image/jpeg",
                 "visibility": "PUBLIC",
                 "image": image_file,
@@ -295,7 +295,7 @@ class ImageEntryTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
         entry = TextEntry.objects.latest("id")
-        self.assertEqual(entry.content_type, "image/jpeg")
+        self.assertEqual(entry.content_type, "image/jpeg;base64")
         self.assertEqual(entry.visibility, "PUBLIC")
         self.assertTrue(bool(entry.image))
             

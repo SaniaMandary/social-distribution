@@ -294,6 +294,7 @@ def addentry(request):
     content_type = request.POST.get('content_type','text/plain')
     visibility = request.POST.get('visibility', 'PUBLIC')
     
+    image_file = None
     if 'image' in request.FILES:
         image_file = request.FILES['image']
         image_data = base64.b64encode(image_file.read()).decode('utf-8')
@@ -309,10 +310,11 @@ def addentry(request):
         title=title,
         description=description,
         content=content,
+        image=image_file,
         content_type=content_type,
         visibility=visibility,
         source_type='native',
-        )
+    )
 
     return redirect("/social_distribution")
 
@@ -335,6 +337,7 @@ def get_entries(request):
 def deleteentry(request, entry_id):
     entry = get_object_or_404(TextEntry, id=entry_id, belonging_url=request.user.username, is_deleted=False)
     entry.is_deleted = True
+    print(entry.is_deleted)
     entry.save()
     return Response({"success": True, "message": "Entry deleted."}, status=200)
 
@@ -993,6 +996,7 @@ def api_author_entry_detail(request, author_serial, entry_serial):
     if request.method == 'PUT':
         if entry.is_deleted:
             return Response({"error": "Cannot edit a deleted entry."}, status=404)
+        
         if 'title' in request.data:       entry.title = request.data['title']
         if 'content' in request.data:     entry.content = request.data['content']
         if 'description' in request.data: entry.description = request.data['description']
