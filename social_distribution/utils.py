@@ -5,6 +5,7 @@ from django.http import HttpResponse
 import requests as http_requests
 from django.utils import timezone
 from django.db.models import Q
+from django.urls import reverse
 from datetime import datetime, timezone as dt_tz
 from rest_framework.response import Response
 from .models import (
@@ -280,7 +281,82 @@ def remote_node_get(node, endpoint: str, auth_required=True):
     else:
         return http_requests.get(url, timeout=5)
 
+# get a list of remote authors from a node
+# returns: list of Author objects
+def remote_node_get_authors(node, auth_required=True):
+    response = remote_node_get(node, "api/authors/", auth_required=auth_required)
+    authors = response.json().get('authors', []) 
+    authors_actual = []
+    for i in range(len(authors)):
+        author = convert_remote_author_to_local(authors[i])
+        authors_actual.append(author)
+    return authors_actual
 
+# get a list of remote entries for a given author from a node
+# returns: list of TextEntry objects
+def remote_node_get_entries(node, author, auth_required=True):
+    response = remote_node_get(node, f"api/authors/{author.serial}/entries/", auth_required=auth_required)
+    entries = response.json().get('src', []) 
+    entries_actual = []
+    for i in range(len(entries)):
+        entry = convert_remote_entry_to_local(entries[i], author)
+        entries_actual.append(entry)
+    return entries_actual
+
+def convert_remote_author_to_local(author_data):
+    # Convert incoming author data from a remote node into a local Author object.
+    serial = author_data.get('id').split("/")[-1]
+    return Author(
+        id=author_data.get('id'),
+        serial=serial,
+        username=author_data.get('displayName', ''),
+
+        host=author_data.get('host', ''),
+        is_local=False,
+        is_approved=True,  # Assume remote authors are approved by default
+        name=author_data.get('displayName', ''),
+        description="remote author",
+        picture=author_data.get('profileImage', ''),
+        github=author_data.get('github', ''),
+    )
+
+def convert_remote_entry_to_local(entry_data, author):
+    # Convert incoming entry data from a remote node into a local TextEntry object.
+    from .serializers import EntrySerializer
+    r_entry = EntrySerializer(data=entry_data)
+    if r_entry.is_valid():
+        r_entry = TextEntry(**r_entry.validated_data) # https://stackoverflow.com/questions/37232436/django-rest-serializer-create-object-without-saving
+        r_entry.source_type = 'remote'
+        r_entry.remote_fqid = entry_data.get('id', '')
+        r_entry.author = author
+        return r_entry
+    else:
+        print("Invalid entry data:", r_entry.errors)
+        return None
+
+    return TextEntry(
+        author=author,
+        remote_fqid=entry_data.get('id', ''),
+        title=entry_data.get('title', ''),
+        description=entry_data.get('description', ''),
+        content=entry_data.get('content', ''),
+        image=entry_data.get('image', ''),
+        published=entry_data.get('published', timezone.now()),
+
+        content_type=entry_data.get('contentType', 'text/markdown'),
+        source_type=entry_data.get('sourceType', 'remote'),
+        visibility=entry_data.get('visibility', 'PUBLIC'),
+    )
+
+def get_source_entry_url(entry):
+    if entry.source_type == 'remote':
+        # replace https://herokuapp.com/social_distribution/api/authors/uuid/entries/1
+        # with https://herokuapp.com/social_distribution/entries/1
+        # this may be a source of incompatibility if other groups use fqid purely
+
+        return entry.remote_fqid.replace(f"api/authors/{entry.author.serial}/entries/", "")
+    else:
+        return reverse("social_distribution:detail", kwargs={"pk": entry.pk})
 
 
 def authenticate_remote_node(request):
@@ -339,7 +415,6 @@ def get_node_for_author(author):
 
     logger.warning(f"No matching node found for remote author {author.id} (host={author.host})")
     return None
-
 
 #build the inbox API endpoint path for a given author 
 def get_inbox_endpoint(author):

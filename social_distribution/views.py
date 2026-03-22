@@ -2,16 +2,18 @@ import base64
 import markdown
 import logging
 import requests as http_requests
+from itertools import chain
 #django imports
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import generic
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.http import HttpResponse
 from django.http import FileResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 # rest imports 
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
@@ -25,13 +27,14 @@ from .serializers import (
 )
 # Utility functions 
 from .utils import (
-    NOT_DELETED, get_author_by_serial, get_current_author,
-    author_exists, validate_create_author, friends,
+    NOT_DELETED, convert_remote_author_to_local, get_author_by_serial, get_current_author,
+    author_exists, get_source_entry_url, validate_create_author, friends,
     fetch_remote_author, can_view_entry, render_markdown_entries,
     get_page_args, paginate_set, build_paginated_response,
     fetch_github_entries, remote_node_get, authenticate_remote_node, 
     send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox, 
     send_like_to_inbox, send_comment_to_inbox, send_like_to_followers, send_comment_to_followers,
+    convert_remote_entry_to_local, remote_node_get_authors, remote_node_get_entries
 )
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,8 @@ def index(request):
     if not request.user.is_authenticated: # authenticated personal page view
         return redirect('/social_distribution/login')
     
+    nodes = Node.objects.all()
+
     author = get_current_author(request)
     fetch_github_entries(author, 0) # no cooldown. Refresh always for the logged in user  
     entries = TextEntry.objects.filter(author=author).filter(NOT_DELETED).order_by("-published")
@@ -83,12 +88,28 @@ def index(request):
         else:
             followfriends_entries = followfriends_entries.union(following_entries)
 
-    if followfriends_entries is not None:
-        followfriends_entries = followfriends_entries.order_by("-published")
+    if followfriends_entries is None:
+        followfriends_entries = []
 
     # all public entries on the node
-    public_entries = TextEntry.objects.filter(visibility="PUBLIC").filter(NOT_DELETED).order_by("-published")
+    public_entries = TextEntry.objects.filter(visibility="PUBLIC").filter(NOT_DELETED)
+    # all remote node public entries
+    remote_public_entries = []
+    for node in nodes:
+        authors = remote_node_get_authors(node, auth_required=False)
+        for author in authors:
+            r_entries = remote_node_get_entries(node, author, auth_required=False)
+            remote_public_entries.extend(r_entries)
+    # sort and combine local and remote public entries
+    public_entries = list(chain(public_entries, remote_public_entries))
+    public_entries.sort(key=lambda e: e.published, reverse=True)
     
+    # manually set a url parameter for a mix of remote and local entries
+    for entry in public_entries:
+        entry.url = get_source_entry_url(entry)
+    for entry in followfriends_entries:
+        entry.url = get_source_entry_url(entry)
+
     # Apply markdown to all entries if they exist
     #I should refactor this code in some othe function and then call it here. Maybe a utils.py ?  
     render_markdown_entries(entries)
