@@ -12,7 +12,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 # rest imports 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 # django objects 
 from .forms import TextEntryForm, ChangeProfileForm
@@ -861,6 +861,8 @@ def public_user_entries(request, username):
     pass
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def api_inbox(request, author_serial):
     # authenticate remote node 
     remote_node = authenticate_remote_node(request) 
