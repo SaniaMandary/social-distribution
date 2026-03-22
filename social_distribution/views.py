@@ -626,6 +626,13 @@ def unfollow(request, username):
 def author_list(request):
     current_author = get_current_author(request)
     authors = Author.objects.exclude(serial=current_author.serial)
+    
+    following_ids = set(
+        Follow.objects.filter(follower=current_author).values_list('following_id', flat=True)
+    )
+    for author in authors:
+        author.is_followed = author.id in following_ids
+    
     return render(request, "social_distribution/author_list.html",{"authors": authors})
 
 @login_required
