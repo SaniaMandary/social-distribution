@@ -14,6 +14,7 @@ urlpatterns = [
 
     #Web UI - Social (Follow, Unfollow)
     path("follow/<str:username>/", views.follow_author, name="follow_author"),
+    path("follow_by_serial/<uuid:serial>/", views.follow_by_serial, name="follow_by_serial"),
     path("unfollow/<str:username>/", views.unfollow, name="unfollow"),
     path("follow_requests/", views.follow_requests, name="follow_requests"),
     path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),

@@ -567,6 +567,26 @@ def follow_author(request, username):
     return redirect("social_distribution:profile", username=username)
 
 
+
+@login_required
+def follow_by_serial(request, serial):
+    if request.method != 'POST':
+        return redirect("social_distribution:index")
+    current_author = get_current_author(request)
+    target_author = get_object_or_404(Author, serial=serial)
+
+    if current_author != target_author:
+        follow, created = Follow.objects.get_or_create(
+            follower=current_author,
+            following=target_author,
+            defaults={"approved": False}
+        )
+        if created and not target_author.is_local:
+            send_follow_to_inbox(follow, request)
+
+    return redirect("social_distribution:author_list")
+
+
 @login_required
 def approve_follow(request, username):
     current_author = get_current_author(request)
