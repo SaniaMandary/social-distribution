@@ -77,6 +77,8 @@ class TextEntry(models.Model):
 
     @property
     def fqid(self):
+        if self.remote_fqid:
+            return self.remote_fqid
         return f"{self.author.fqid}/entries/{self.pk}"
 
     @property
