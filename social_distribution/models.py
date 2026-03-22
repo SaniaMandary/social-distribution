@@ -116,6 +116,7 @@ class Follow(models.Model):
 class Comment(models.Model):
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="comments")
     entry = models.URLField(max_length=500)
+    remote_fqid = models.URLField(max_length=500, blank=True, default='', db_index=True)
     
     local_entry = models.ForeignKey(
         TextEntry, on_delete=models.CASCADE,
@@ -128,6 +129,8 @@ class Comment(models.Model):
 
     @property 
     def fqid(self):
+        if self.remote_fqid:
+            return self.remote_fqid
         return f"{self.author.fqid}/commented/{self.pk}"
 
 class Node(models.Model):

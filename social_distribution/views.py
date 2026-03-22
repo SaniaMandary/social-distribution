@@ -961,6 +961,7 @@ def api_inbox(request, author_serial):
             return Response({"error": "Missing author id."}, status=400)
 
         entry_fqid = request.data.get('entry', '')
+        comment_id = request.data.get('id', '')
         local_entry = None
         for e in TextEntry.objects.filter(NOT_DELETED):
             if e.fqid == entry_fqid:
