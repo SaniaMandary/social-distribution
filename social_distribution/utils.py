@@ -435,3 +435,39 @@ def send_comment_to_inbox(comment, target_author, request):
 
     serialized = CommentSerializer(comment, context={'request': request}).data
     send_to_inbox(target_author, serialized)
+
+
+def send_like_to_followers(like, entry, request):
+    """
+    Push a like to all remote followers of the entry's author,
+    so they can see it when viewing the entry.
+    """
+    from .serializers import LikeSerializer
+
+    author = entry.author
+    if not author.is_local:
+        return
+
+    serialized = LikeSerializer(like, context={'request': request}).data
+    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    for f in follows:
+        if not f.follower.is_local:
+            send_to_inbox(f.follower, serialized)
+
+
+def send_comment_to_followers(comment, entry, request):
+    """
+    Push a comment to all remote followers of the entry's author,
+    so they can see it when viewing the entry.
+    """
+    from .serializers import CommentSerializer
+
+    author = entry.author
+    if not author.is_local:
+        return
+
+    serialized = CommentSerializer(comment, context={'request': request}).data
+    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    for f in follows:
+        if not f.follower.is_local:
+            send_to_inbox(f.follower, serialized)

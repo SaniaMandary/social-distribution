@@ -31,7 +31,7 @@ from .utils import (
     get_page_args, paginate_set, build_paginated_response,
     fetch_github_entries, remote_node_get, authenticate_remote_node, 
     send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox, 
-    send_like_to_inbox, send_comment_to_inbox,
+    send_like_to_inbox, send_comment_to_inbox, send_like_to_followers, send_comment_to_followers,
 )
 
 logger = logging.getLogger(__name__)
@@ -435,6 +435,7 @@ def api_entry_likes(request, author_serial, entry_serial):
 
         like = Like.objects.create(author=liker, object_url=entry.fqid)
         send_like_to_inbox(like, entry.author, request)
+        send_like_to_followers(like, entry, request)
         return Response(LikeSerializer(like, context={'request': request}).data, status=201)
 
 
@@ -1381,6 +1382,7 @@ def api_entry_comments(request, author_serial, entry_serial):
         comment=comment_text, content_type=request.data.get('contentType', 'text/markdown'),
     )
     send_comment_to_inbox(comment, entry.author, request)
+    send_comment_to_followers(comment, entry, request)
     return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
 
 
