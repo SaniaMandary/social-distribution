@@ -7,14 +7,24 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timezone as dt_tz
 from rest_framework.response import Response
-from .models import Like, Comment, TextEntry, Author, Follow
+from .models import (
+    Node, Like, Comment, TextEntry, Author, Follow,
+)
 
 logger = logging.getLogger(__name__)
 NOT_DELETED = ~Q(visibility='DELETED')
 
+# all remote endpoints need http basic auth. 
+
+def is_authenticated_request(request):
+    if request.user.is_authenticated:
+        return True
+    if authenticate_remote_node(request):
+        return True
+    return False
+
 
 # Author helper methods 
-
 
 def get_author_by_serial(username):
     return Author.objects.get(username=username)
@@ -264,8 +274,158 @@ def remote_node_get(node, endpoint: str, auth_required=True):
         response.reason = "Node is disabled"
         return response
 
-    
+    url = node.url.rstrip('/') + '/' + endpoint.lstrip('/')
     if auth_required:
-        return http_requests.get(node.url + endpoint, auth=(node.username, node.password), timeout=5)
+        return http_requests.get(url, auth=(node.outgoing_username, node.outgoing_password), timeout=5)
     else:
-        return http_requests.get(node.url + endpoint, timeout=5)
+        return http_requests.get(url, timeout=5)
+
+
+
+
+def authenticate_remote_node(request):
+    auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+    if not auth_header.startswith('Basic '):
+        return None
+
+    try:
+        decoded = base64.b64decode(auth_header[6:]).decode('utf-8')
+        username, password = decoded.split(':', 1)
+    except Exception:
+        return None
+
+    try:
+        node = Node.objects.get( # Look up a node whose credentials match what was sent to us.
+            incoming_username=username,  
+            incoming_password=password,
+            is_enabled=True,
+        )
+        return node
+    except Node.DoesNotExist:
+        return None
+
+
+def remote_node_post(node, endpoint, data):
+    if not node.is_enabled:
+        logger.warning(f"Attempted to POST to disabled node {node.url}")
+        return None
+
+    url = node.url.rstrip('/') + '/' + endpoint.lstrip('/')
+    try:
+        response = http_requests.post(
+            url,
+            json=data,
+            auth=(node.outgoing_username, node.outgoing_password),
+            timeout=10,
+        )
+        logger.info(f"POST {url} -> {response.status_code}")
+        return response
+    except Exception as e:
+        logger.error(f"Failed to POST to {url}: {e}")
+        return None
+
+
+def get_node_for_author(author):
+    if author.is_local:
+        return None
+
+    author_host = author.host.rstrip('/')
+
+    for node in Node.objects.filter(is_enabled=True):
+        node_url = node.url.rstrip('/')
+        # Match if the author's host starts with or equals the node URL
+        if author_host.startswith(node_url) or node_url.startswith(author_host):
+            return node
+
+    logger.warning(f"No matching node found for remote author {author.id} (host={author.host})")
+    return None
+
+
+#build the inbox API endpoint path for a given author 
+def get_inbox_endpoint(author):
+    return f"api/authors/{author.serial}/inbox"
+
+
+
+# send payload to a single authors inbox if they are remote handle by finding their node and POST. 
+# local delivery is handled elsehwere.  
+def send_to_inbox(target_author, data):
+    if target_author.is_local:
+        return  # local authors don't need inbox delivery
+
+    node = get_node_for_author(target_author)
+    if not node:
+        logger.warning(f"Cannot send to inbox of {target_author.id}: no matching node")
+        return
+
+    endpoint = get_inbox_endpoint(target_author)
+    remote_node_post(node, endpoint, data)
+
+
+# after creating/editing/deleteing an entry push it all to remote followers/friends inboxes 
+def send_entry_to_followers(entry, request):
+    from .serializers import EntrySerializer
+
+    author = entry.author
+    if not author.is_local:
+        return  # only push entries created on OUR node
+
+    serialized = EntrySerializer(entry, context={'request': request}).data
+
+    # Determine who should receive this entry
+    if entry.visibility in ('PUBLIC', 'UNLISTED'):
+        # send to all followers
+        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        recipients = [f.follower for f in follows]
+    elif entry.visibility == 'FRIENDS':
+        # ssnd only to friends (mutual follows)
+        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        recipients = [f.follower for f in follows if friends(author, f.follower)]
+    elif entry.visibility == 'DELETED':
+        # send delete notification to all followers
+        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        recipients = [f.follower for f in follows]
+    else:
+        return
+
+    for recipient in recipients:
+        if not recipient.is_local:
+            send_to_inbox(recipient, serialized)
+
+
+# local author follows a remote author post the follow request to remote authors inbox
+def send_follow_to_inbox(follow_obj, request):
+    from .serializers import FollowSerializer
+
+    target = follow_obj.following
+    if target.is_local:
+        return  # local follow, no remote push needed
+
+    serialized = FollowSerializer(follow_obj, context={'request': request}).data
+    send_to_inbox(target, serialized)
+
+
+
+# When a local author likes something, PSOT the like to the entry/comment author's inbox 
+# if they are a remote author 
+def send_like_to_inbox(like, target_author, request):
+    from .serializers import LikeSerializer
+
+    if target_author.is_local:
+        return
+
+    serialized = LikeSerializer(like, context={'request': request}).data
+    send_to_inbox(target_author, serialized)
+
+
+
+#When a local author comments on an entry, POST the comment to the entry authors
+# inbox if they are a remote author. 
+def send_comment_to_inbox(comment, target_author, request):
+    from .serializers import CommentSerializer
+
+    if target_author.is_local:
+        return
+
+    serialized = CommentSerializer(comment, context={'request': request}).data
+    send_to_inbox(target_author, serialized)

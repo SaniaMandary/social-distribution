@@ -28,7 +28,8 @@ from .utils import (
     author_exists, validate_create_author, friends,
     fetch_remote_author, can_view_entry, render_markdown_entries,
     get_page_args, paginate_set, build_paginated_response,
-    fetch_github_entries, remote_node_get
+    fetch_github_entries, remote_node_get, authenticate_remote_node, 
+    send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox,
 )
 
 logger = logging.getLogger(__name__)
@@ -321,7 +322,7 @@ def addentry(request):
     if not title.strip():
         title = content[:80] + ('...' if len(content) > 80 else '')
     
-    TextEntry.objects.create(
+    entry = TextEntry.objects.create(
         author=author,
         title=title,
         description=description,
@@ -331,6 +332,9 @@ def addentry(request):
         visibility=visibility,
         source_type='native',
     )
+    #push to remote follower inboxes 
+    send_entry_to_followers(entry, request)
+
 
     return redirect("/social_distribution")
 
@@ -427,6 +431,7 @@ def api_entry_likes(request, author_serial, entry_serial):
             return Response({"success": True, "liked": False})
 
         like = Like.objects.create(author=liker, object_url=entry.fqid)
+        send_like_to_inbox(like, entry.author, request)
         return Response(LikeSerializer(like, context={'request': request}).data, status=201)
 
 
@@ -468,6 +473,7 @@ def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
                     return Response({"success": True, "liked": False})
 
                 like = Like.objects.create(author=liker, object_url=comment.fqid)
+                send_like_to_inbox(like, entry.author, request)
                 return Response(LikeSerializer(like, context={'request': request}).data, status=201)
 
     return Response({"error": "Comment not found."}, status=404)
@@ -550,11 +556,14 @@ def follow_author(request, username):
     target_author = get_object_or_404(Author, username=username)
 
     if current_author != target_author:
-        Follow.objects.get_or_create(
+        follow, created = Follow.objects.get_or_create(
             follower=current_author,
             following=target_author,
             defaults={"approved": False}
         )
+        if created and not target_author.is_local:
+                send_follow_to_inbox(follow, request)
+
     return redirect("social_distribution:profile", username=username)
 
 
@@ -853,6 +862,11 @@ def public_user_entries(request, username):
 
 @api_view(['POST'])
 def api_inbox(request, author_serial):
+    # authenticate remote node 
+    remote_node = authenticate_remote_node(request) 
+    if not remote_node:
+        return Response({"error": "Remote node authentication required."}, status=401)
+
     author = get_object_or_404(Author, serial=author_serial)
     obj_type = request.data.get('type', '').lower()
 
@@ -868,13 +882,24 @@ def api_inbox(request, author_serial):
         remote_author = fetch_remote_author(request.data.get('author', {}))
         if not remote_author:
             return Response({"error": "Missing author id."}, status=400)
+        
+        entry_fqid = request.data.get('id', '')
         visibility = request.data.get('visibility', 'PUBLIC')
+        
         if visibility == 'DELETED':
-            TextEntry.objects.filter(author=remote_author).update(visibility='DELETED')
+            if entry_fqid: 
+                TextEntry.objects.filter(remote_fqid=entry_fqid).update(visibility='DELETED')
+            else: 
+                TextEntry.objects.filter(author=remote_author).update(visibility='DELETED')
             return Response({"success": True}, status=200)
+
+        if not entry_fqid: 
+            return Response({"error": "Missing entry id (FQID)."}, status=400)
+
         TextEntry.objects.update_or_create(
-            author=remote_author,
+            remote_fqid = entry_fqid,
             defaults={
+                'author': remote_author,
                 'title': request.data.get('title', ''),
                 'description': request.data.get('description', ''),
                 'content': request.data.get('content', ''),
@@ -992,6 +1017,8 @@ def api_author_entries(request, author_serial):
         content=content, content_type=content_type,
         visibility=visibility, source_type='native',
     )
+    send_entry_to_followers(entry, request)
+
     return Response(EntrySerializer(entry, context={'request': request}).data, status=201)
 
 
@@ -1023,6 +1050,7 @@ def api_author_entry_detail(request, author_serial, entry_serial):
             vis = request.data['visibility']
             if vis in ['PUBLIC', 'FRIENDS', 'UNLISTED']: entry.visibility = vis
         entry.save()
+        send_entry_to_followers(entry, request)
         return Response(EntrySerializer(entry, context={'request': request}).data)
 
     if request.method == 'DELETE':
@@ -1030,6 +1058,7 @@ def api_author_entry_detail(request, author_serial, entry_serial):
             return Response({"error": "Already deleted."}, status=404)
         entry.visibility = 'DELETED'
         entry.save()
+        send_entry_to_followers(entry, request)
         return Response({"success": True, "message": "Entry deleted."}, status=200)
 
 
@@ -1106,6 +1135,9 @@ def api_author_following_detail(request, author_serial, foreign_author_fqid):
             follower=author, following=target,
             defaults={"approved": False}
         )
+        if created and not target.is_local:
+            send_follow_to_inbox(follow, request)
+
         return Response(FollowSerializer(follow, context={'request': request}).data, status=201 if created else 200)
 
     if request.method == 'DELETE':
@@ -1150,6 +1182,17 @@ def api_author_commented(request, author_serial):
         author=author, entry=entry_fqid, local_entry=local_entry,
         comment=comment_text, content_type=content_type,
     )
+
+    if local_entry:
+        send_comment_to_inbox(comment, local_entry.author, request)
+    else:
+        # Entry is remote — try to find the author from the entry FQID
+        # FQID looks like http://node/api/authors/abc/entries/123
+        # We need to find the author whose FQID matches the prefix
+        for a in Author.objects.filter(is_local=False):
+            if entry_fqid.startswith(a.fqid):
+                send_comment_to_inbox(comment, a, request)
+                break
     return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
 
 
@@ -1301,6 +1344,7 @@ def api_entry_comments(request, author_serial, entry_serial):
         author=commenter, entry=entry.fqid, local_entry=entry,
         comment=comment_text, content_type=request.data.get('contentType', 'text/markdown'),
     )
+    send_like_to_inbox(like, entry.author, request)
     return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
 
 

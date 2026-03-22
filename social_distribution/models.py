@@ -50,6 +50,7 @@ class TextEntry(models.Model):
     # is_deleted --> deleted (now conveyed through visibility field)
 
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="entries")
+    remote_fqid = models.URLField(max_length=500, blank=True, default='', db_index=True)
     title = models.CharField(max_length=250, default='')
     description = models.CharField(max_length=500, blank=True, default='')
     content = models.TextField(blank=True, default='')
@@ -129,6 +130,15 @@ class Comment(models.Model):
 
 class Node(models.Model):
     url = models.URLField(max_length=500, unique=True)
-    username = models.CharField(max_length=150, blank=True, default='')
-    password = models.CharField(max_length=150, blank=True, default='')
+   
+   #Credentials we use to call their api 
+    outgoing_username = models.CharField(max_length=150, blank=True, default='')
+    outgoing_password = models.CharField(max_length=150, blank=True, default='')
+   #Credentials they use to call our api 
+    incoming_username = models.CharField(max_length=150, blank=True, default='')
+    incoming_password = models.CharField(max_length=150, blank=True, default='')
+
     is_enabled = models.BooleanField(default=False)
+
+    def __str__(self): 
+        return f"Node: {self.url} ({'enabled' if self.is_enabled else 'disabled'})"
