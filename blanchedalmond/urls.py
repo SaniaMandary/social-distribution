@@ -18,8 +18,10 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect
 
 urlpatterns = [
+    path('', lambda request: redirect('login')),
     path('social_distribution/', include("social_distribution.urls")),
     path('admin/', admin.site.urls),
 ]
