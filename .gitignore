@@ -1,3 +1,6 @@
+# static files dir
+staticfiles/ 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 .pyc
