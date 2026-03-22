@@ -11,6 +11,7 @@ from django.http import FileResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 # rest imports 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -245,7 +246,7 @@ def nodes_view(request):
     return render(request, "social_distribution/nodes.html", dataToSend)
 
 # API CALLABLE
-    
+@csrf_exempt    
 @api_view(['POST'])
 def loginregister(request):
     username = request.POST["username"]
@@ -272,14 +273,14 @@ def loginregister(request):
                 return render(request, 'login.html', {'message': str(ex)})
         return render(request, 'login.html', {'message': 'Invalid username or password'})
 
-
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def signout(request):
     logout(request._request)
     return redirect("/social_distribution")
 
-
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def editprofile(request):
@@ -298,7 +299,7 @@ def editprofile(request):
     
     return render(request, 'changeprofile.html', {'message': 'Form requirements failed, change failed.'})
 
-
+@csrf_exempt
 @login_required
 def addentry(request):
     if request.method != 'POST': 
@@ -351,7 +352,7 @@ def get_entries(request):
     serializer = EntrySerializer(page_data, many=True, context={'request': request})
     return Response(build_paginated_response("entries", "src", serializer.data, page, size, total))
 
-
+@csrf_exempt
 @login_required
 @api_view(['DELETE'])
 def deleteentry(request, entry_id):
@@ -361,6 +362,7 @@ def deleteentry(request, entry_id):
     entry.save()
     return Response({"success": True, "message": "Entry deleted."}, status=200)
 
+@csrf_exempt
 @login_required
 @api_view(['PUT'])
 def editentry(request, entry_id):
@@ -382,7 +384,7 @@ def editentry(request, entry_id):
     serializer = EntrySerializer(entry, context={'request': request})
     return Response(serializer.data, status=200)
 
-
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def add_like(request):
@@ -396,7 +398,7 @@ def add_like(request):
     serializer = LikeSerializer(like, context={'request': request})
     return Response(serializer.data)
 
-
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def api_entry_likes(request, author_serial, entry_serial):
     target_author = get_object_or_404(Author, serial=author_serial)
@@ -435,7 +437,7 @@ def api_entry_likes(request, author_serial, entry_serial):
         return Response(LikeSerializer(like, context={'request': request}).data, status=201)
 
 
-
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
     target_author = get_object_or_404(Author, serial=author_serial)
@@ -479,7 +481,7 @@ def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
     return Response({"error": "Comment not found."}, status=404)
 
 
-
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def add_like_entry(request, entry_id):
@@ -510,6 +512,7 @@ def add_like_entry(request, entry_id):
         "liked": True,
     })
 
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def add_like_comment(request, comment_id):
@@ -675,6 +678,7 @@ def get_comments(request, entry_id):
         "src": serializer.data
     })
 
+@csrf_exempt
 @login_required
 @api_view(['POST'])
 def post_entry_comment(request, entry_id):
@@ -804,6 +808,7 @@ def public_get_entry(request, entry_id):
     except TextEntry.DoesNotExist:
         return Response("Entry does not exist.", status=404)
 
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def public_user_entries(request, username):
     # get the target author
@@ -860,6 +865,7 @@ def public_user_entries(request, username):
 
     pass
 
+@csrf_exempt
 @api_view(['POST'])
 def api_inbox(request, author_serial):
     # authenticate remote node 
@@ -952,7 +958,7 @@ def api_authors(request):
     serializer = AuthorSerializer(page_data, many=True, context={'request': request})
     return Response(build_paginated_response("authors", "authors", serializer.data, page, size, total))
 
-
+@csrf_exempt
 @api_view(['GET', 'PUT'])
 def api_single_author(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
@@ -972,7 +978,7 @@ def api_single_author(request, author_serial):
     author.save()
     return Response(AuthorSerializer(author, context={'request': request}).data)
 
-
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def api_author_entries(request, author_serial):
     target_author = get_object_or_404(Author, serial=author_serial)
@@ -1022,7 +1028,7 @@ def api_author_entries(request, author_serial):
     return Response(EntrySerializer(entry, context={'request': request}).data, status=201)
 
 
-
+@csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
 def api_author_entry_detail(request, author_serial, entry_serial):
     target_author = get_object_or_404(Author, serial=author_serial)
@@ -1069,7 +1075,7 @@ def api_author_followers(request, author_serial):
     serializer = AuthorSerializer([f.follower for f in follows], many=True, context={'request': request})
     return Response({"type": "followers", "followers": serializer.data})
 
-
+@csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
 def api_author_follower_detail(request, author_serial, foreign_author_fqid):
     author = get_object_or_404(Author, serial=author_serial)
@@ -1108,7 +1114,7 @@ def api_author_following(request, author_serial):
     serializer = AuthorSerializer([f.following for f in follows], many=True, context={'request': request})
     return Response({"type": "following", "following": serializer.data})
 
-
+@csrf_exempt
 @api_view(['GET', 'PUT', 'DELETE'])
 def api_author_following_detail(request, author_serial, foreign_author_fqid):
     
@@ -1149,7 +1155,7 @@ def api_author_following_detail(request, author_serial, foreign_author_fqid):
         return Response({"success": True}, status=200)
 
 
-
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def api_author_commented(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
@@ -1312,7 +1318,7 @@ def api_entry_fqid_image(request, entry_fqid):
                 return Response({"error": "Could not decode image."}, status=500)
     return Response({"error": "Entry not found."}, status=404)
 
-
+@csrf_exempt
 @api_view(['GET', 'POST'])
 def api_entry_comments(request, author_serial, entry_serial):
     target_author = get_object_or_404(Author, serial=author_serial)
