@@ -29,7 +29,8 @@ from .utils import (
     fetch_remote_author, can_view_entry, render_markdown_entries,
     get_page_args, paginate_set, build_paginated_response,
     fetch_github_entries, remote_node_get, authenticate_remote_node, 
-    send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox,
+    send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox, 
+    send_like_to_inbox, send_comment_to_inbox,
 )
 
 logger = logging.getLogger(__name__)
