@@ -1374,7 +1374,7 @@ def api_entry_comments(request, author_serial, entry_serial):
         author=commenter, entry=entry.fqid, local_entry=entry,
         comment=comment_text, content_type=request.data.get('contentType', 'text/markdown'),
     )
-    send_like_to_inbox(like, entry.author, request)
+    send_comment_to_inbox(comment, entry.author, request)
     return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
 
 
