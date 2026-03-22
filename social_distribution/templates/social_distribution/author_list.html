@@ -12,7 +12,11 @@
     <ul>
         {% for author in authors %}
             <li>
+            {% if author.is_local %}
                 <a href="{% url 'social_distribution:profile' author.username %}">{{ author.name}}</a>
+            {% else %}
+                 {{ author.name }} <small>(remote)</small>
+            {% endif %}
             </li>
         {% empty %}
             <li>No authors yet.</li>

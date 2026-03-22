@@ -570,7 +570,7 @@ def follow_author(request, username):
 @login_required
 def approve_follow(request, username):
     current_author = get_current_author(request)
-    follower_author = get_object_or_404(Author, username=username)
+    follower_author = get_object_or_404(Author, serial=username)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
     follow.approved = True
     follow.save()

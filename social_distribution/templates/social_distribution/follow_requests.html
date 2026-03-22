@@ -14,11 +14,11 @@
             {% for req in requests %}
             <li>
                 {{ req.follower.name }} wants to follow you
-                <form method="post" action="{% url 'social_distribution:approve_follow' username=req.follower.username %}">
+                <form method="post" action="{% url 'social_distribution:approve_follow' username=req.follower.serial %}">
                     {% csrf_token %}
                     <button type="submit">Accept</button>
                 </form>
-                <form method="post" action="{% url 'social_distribution:reject_follow' username=req.follower.username %}">
+                <form method="post" action="{% url 'social_distribution:reject_follow' username=req.follower.serial %}">
                     {% csrf_token %}
                     <button type="submit">Reject</button>
                 </form>
