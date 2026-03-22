@@ -343,8 +343,14 @@ def get_node_for_author(author):
 
 #build the inbox API endpoint path for a given author 
 def get_inbox_endpoint(author):
-    return f"api/authors/{author.serial}/inbox"
+    fqid = author.id
+    marker = 'api/authors/'
+    idx = fqid.find(marker)
+    if idx != -1:
+        real_serial = fqid[idx + len(marker):].strip('/')
+        return f"api/authors/{real_serial}/inbox/"
 
+    return f"api/authors/{author.serial}/inbox/"
 
 
 # send payload to a single authors inbox if they are remote handle by finding their node and POST. 

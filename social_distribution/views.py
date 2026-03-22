@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 # rest imports 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 # django objects 
 from .forms import TextEntryForm, ChangeProfileForm
@@ -30,7 +30,8 @@ from .utils import (
     fetch_remote_author, can_view_entry, render_markdown_entries,
     get_page_args, paginate_set, build_paginated_response,
     fetch_github_entries, remote_node_get, authenticate_remote_node, 
-    send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox,
+    send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox, 
+    send_like_to_inbox, send_comment_to_inbox,
 )
 
 logger = logging.getLogger(__name__)
@@ -570,10 +571,30 @@ def follow_author(request, username):
     return redirect("social_distribution:profile", username=username)
 
 
+
+@login_required
+def follow_by_serial(request, serial):
+    if request.method != 'POST':
+        return redirect("social_distribution:index")
+    current_author = get_current_author(request)
+    target_author = get_object_or_404(Author, serial=serial)
+
+    if current_author != target_author:
+        follow, created = Follow.objects.get_or_create(
+            follower=current_author,
+            following=target_author,
+            defaults={"approved": False}
+        )
+        if created and not target_author.is_local:
+            send_follow_to_inbox(follow, request)
+
+    return redirect("social_distribution:author_list")
+
+
 @login_required
 def approve_follow(request, username):
     current_author = get_current_author(request)
-    follower_author = get_object_or_404(Author, username=username)
+    follower_author = get_object_or_404(Author, serial=username)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
     follow.approved = True
     follow.save()
@@ -609,6 +630,13 @@ def unfollow(request, username):
 def author_list(request):
     current_author = get_current_author(request)
     authors = Author.objects.exclude(serial=current_author.serial)
+    
+    following_ids = set(
+        Follow.objects.filter(follower=current_author).values_list('following_id', flat=True)
+    )
+    for author in authors:
+        author.is_followed = author.id in following_ids
+    
     return render(request, "social_distribution/author_list.html",{"authors": authors})
 
 @login_required
@@ -867,6 +895,8 @@ def public_user_entries(request, username):
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def api_inbox(request, author_serial):
     # authenticate remote node 
     remote_node = authenticate_remote_node(request) 

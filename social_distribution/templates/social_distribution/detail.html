@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
     {% else %}
         <h1>{{ entry.title }}</h1>
     {% endif %}
-    <p>Posted by: {{ entry.author.username }}</p>
+    <p>Posted by: {{ entry.author.name }}</p>
     <br>
     <p>Date: {{ entry.published }}</p>
   </header>
@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <hr>
 
-    {% if request.user.username == entry.author.username %}
+    {% if request.user.username == entry.author.username and entry.author.is_local %}
     <section>
         <label for="edit_content">Edit entry:</label><br>
         <textarea id="edit_content" rows="4" cols="50">{{ entry.content }}</textarea><br><br>

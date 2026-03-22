@@ -54,7 +54,7 @@
                         <section class="entry-card-content">
                              <header class="entry-card-meta">
                                 <img class="entry-avatar" src="{{entry.author.picture}}" alt="{{entry.author.username}}">
-                                <cite class="entry-card-author">{{entry.author.username}}</cite>
+                                <cite class="entry-card-author">{{entry.author.name}}</cite>
                                 <div class="entry-card-meta-right">
                                     {% if is_own_profile or entry.author == request.user %}
                                         <small class="entry-rel-tag">(You)</small>
@@ -127,7 +127,7 @@
                         <section class="entry-card-content">
                              <header class="entry-card-meta">
                                 <img class="entry-avatar" src="{{entry.author.picture}}" alt="{{entry.author.username}}">
-                                <cite class="entry-card-author">{{entry.author.username}}</cite>
+                                <cite class="entry-card-author">{{entry.author.name}}</cite>
                                 <div class="entry-card-meta-right">
                                     {% if is_own_profile or entry.author == request.user %}
                                         <small class="entry-rel-tag">(You)</small>
@@ -202,7 +202,7 @@
                         <section class="entry-card-content">
                              <header class="entry-card-meta">
                                 <img class="entry-avatar" src="{{entry.author.picture}}" alt="{{entry.author.username}}">
-                                <cite class="entry-card-author">{{entry.author.username}}</cite>
+                                <cite class="entry-card-author">{{entry.author.name}}</cite>
                                 <div class="entry-card-meta-right">
                                     {% if is_own_profile or entry.author == request.user %}
                                         <small class="entry-rel-tag">(You)</small>
