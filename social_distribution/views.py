@@ -478,6 +478,7 @@ def api_comment_likes(request, author_serial, entry_serial, comment_fqid):
 
                 like = Like.objects.create(author=liker, object_url=comment.fqid)
                 send_like_to_inbox(like, entry.author, request)
+                send_like_to_followers(like, entry, request)
                 return Response(LikeSerializer(like, context={'request': request}).data, status=201)
 
     return Response({"error": "Comment not found."}, status=404)
