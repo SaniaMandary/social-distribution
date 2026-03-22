@@ -1,0 +1,19 @@
+{
+  "info": {
+    "_postman_id": "dedcc65f-8fd5-482a-8c82-cd81f5d2687d",
+    "name": "Social Distribution API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53393519",
+    "_collection_link": "https://go.postman.co/collection/53393519-dedcc65f-8fd5-482a-8c82-cd81f5d2687d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "request": {
+        "method": "GET",
+        "header": []
+      },
+      "response": []
+    }
+  ]
+}
