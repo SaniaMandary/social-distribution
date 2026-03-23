@@ -949,7 +949,7 @@ GET /social_distribution/api/authors/?page=1&size=5
 | `type`| string | `"authors"` | Always `"authors"`. |
 | `id` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/authors/410baaaf-6974-4a09-a708-34eb4396e813"` | Author uuid. |
 | `host` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/"` | API url of the node. |
-| `displayName | string | `"testuser#2"` | The author's username. |
+| `displayName` | string | `"testuser#2"` | The author's username. |
 | `github` | string | `""` | Github profile link (can be empty). |
 | `profileImage` | string | `""` | profile image url (can be empty). |
 | `web` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/authors/testuser#2"` | Link to the author's profile page. |
