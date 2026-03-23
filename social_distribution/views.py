@@ -1,6 +1,7 @@
 import base64
 import markdown
 import logging
+import uuid
 import requests as http_requests
 from itertools import chain
 #django imports
@@ -270,6 +271,47 @@ class DetailView(generic.DetailView):
         context['comments'] = comment_list
 
         return context 
+
+
+@login_required
+def discover_remote_authors(request):
+    current_author = get_current_author(request)
+    remote_authors = []
+
+    for node in Node.objects.filter(is_enabled=True):
+        try:
+            response = remote_node_get(node, "api/authors/", auth_required=True)
+            if response.status_code == 200:
+                data = response.json()
+                authors_data = data.get('authors', [])
+                for author_data in authors_data:
+                    # Create or update remote author in our DB
+                    author, _ = Author.objects.get_or_create(
+                        id=author_data.get('id'),
+                        defaults={
+                            'serial': uuid.uuid4(),
+                            'username': '',
+                            'host': author_data.get('host', ''),
+                            'name': author_data.get('displayName', ''),
+                            'picture': author_data.get('profileImage', ''),
+                            'github': author_data.get('github', ''),
+                            'is_local': False,
+                        }
+                    )
+                    remote_authors.append(author)
+        except Exception as e:
+            logger.error(f"Failed to fetch authors from {node.url}: {e}")
+
+    # follow status
+    following_ids = set(
+        Follow.objects.filter(follower=current_author).values_list('following_id', flat=True)
+    )
+    for author in remote_authors:
+        author.is_followed = author.id in following_ids
+
+    return render(request, "social_distribution/discover.html", {
+        "remote_authors": remote_authors
+    })
 
 def login_view(request):
     if request.user.is_authenticated:

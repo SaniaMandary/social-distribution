@@ -11,6 +11,7 @@ urlpatterns = [
     path("newentry/",views.newentry_view,name="newentry"),
     path("changeprofile/",views.changeprofile_view,name="changeprofile"),
     path("nodes/", views.nodes_view, name="nodes"),
+    path("discover/", views.discover_remote_authors, name="discover"),
 
     #Web UI - Social (Follow, Unfollow)
     path("follow/<str:username>/", views.follow_author, name="follow_author"),

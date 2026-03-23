@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Discover Remote Authors</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/social_distribution/index.css' %}">
+</head>
+<body>
+    <h1>Discover Remote Authors</h1>
+    {% if remote_authors %}
+    <ul>
+        {% for author in remote_authors %}
+        <li>
+            <a href="{% url 'social_distribution:profile_by_serial' serial=author.serial %}">{{ author.name }}</a>
+            <small>({{ author.host }})</small>
+            {% if author.is_followed %}
+                <span>✓ Request Sent</span>
+            {% else %}
+                <form method="post" action="{% url 'social_distribution:follow_by_serial' serial=author.serial %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit">Follow</button>
+                </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+        <p>No remote authors found. Make sure nodes are configured and enabled in admin.</p>
+    {% endif %}
+    <a href="{% url 'social_distribution:index' %}">Back to Home</a>
+</body>
+</html>
