@@ -1104,15 +1104,19 @@ def api_inbox(request, author_serial):
 
 
 @api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
 def api_authors(request):
     page, size = get_page_args(request)
-    all_authors = Author.objects.all().order_by('serial')
+    all_authors = Author.objects.filter(is_local=True).order_by('serial')
     total = all_authors.count()
     page_data = paginate_set(all_authors, page, size)
     serializer = AuthorSerializer(page_data, many=True, context={'request': request})
     return Response(build_paginated_response("authors", "authors", serializer.data, page, size, total))
 
 @csrf_exempt
+@authentication_classes([])
+@permission_classes([])
 @api_view(['GET', 'PUT'])
 def api_single_author(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)

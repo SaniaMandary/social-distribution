@@ -21,6 +21,7 @@
         <a href="{% url 'social_distribution:followers_list' %}">Followers</a>
         <a href="{% url 'social_distribution:following_list' %}">Following</a>
         <a href="{% url 'social_distribution:friends_list' %}">Friends</a>
+        <a href="{% url 'social_distribution:discover' %}">Discover</a>
         <form method="POST" action="{% url 'social_distribution:signout' %}">
             {% csrf_token %}
             <input type="submit" value="Logout">
