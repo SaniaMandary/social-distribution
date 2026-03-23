@@ -12,7 +12,7 @@
     <ul>
         {% for author in remote_authors %}
         <li>
-            <a href="{% url 'social_distribution:profile_by_serial' serial=author.serial %}">{{ author.name }}</a>
+            {{ author.name }}
             <small>({{ author.host }})</small>
             {% if author.is_followed %}
                 <span>✓ Request Sent</span>
