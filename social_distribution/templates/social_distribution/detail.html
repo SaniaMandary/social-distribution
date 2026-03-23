@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     {% if entry.content_type == 'text/markdown' %}
      {{ entry.content_rendered|safe }}
     {% elif entry.content_type|slice:":6" == "image/" %}
-        <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 400px; max-height: 400px;">
+        <img src="{{ entry.image_url }}" alt="Entry image" style="max-width: 400px; max-height: 400px;">
     {% else %}
          <p>{{ entry.entry_text }}</p>
     {% endif %}

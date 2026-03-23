@@ -34,10 +34,45 @@ from .utils import (
     fetch_github_entries, remote_node_get, authenticate_remote_node, 
     send_entry_to_followers, send_follow_to_inbox, send_comment_to_inbox, 
     send_like_to_inbox, send_comment_to_inbox, send_like_to_followers, send_comment_to_followers,
-    convert_remote_entry_to_local, remote_node_get_authors, remote_node_get_entries
+    convert_remote_entry_to_local, remote_node_get_authors, remote_node_get_entries,
+    get_or_create_remote_author_from_fqid
 )
 
 logger = logging.getLogger(__name__)
+
+ALLOWED_TEXT_CONTENT_TYPES = {'text/plain', 'text/markdown'}
+ALLOWED_IMAGE_CONTENT_TYPES = {'image/png', 'image/jpeg', 'image/gif'}
+
+
+def build_entry_image_url(entry):
+    if not entry.content_type.startswith('image/'):
+        return ''
+    return f"{entry.fqid.rstrip('/')}/image/"
+
+
+def validate_entry_content_payload(content_type, content):
+    ct = (content_type or '').strip()
+    if not ct:
+        return "Missing contentType."
+
+    if ct.startswith('image/'):
+        mime = ct.split(';', 1)[0]
+        if mime not in ALLOWED_IMAGE_CONTENT_TYPES:
+            return "Unsupported image contentType."
+        if ';base64' not in ct:
+            return "Image contentType must include ';base64'."
+        if not isinstance(content, str) or not content.strip():
+            return "Image content must be a non-empty base64 string."
+        try:
+            base64.b64decode(content, validate=True)
+        except Exception:
+            return "Invalid base64 image payload."
+        return None
+
+    if ct not in ALLOWED_TEXT_CONTENT_TYPES:
+        return "Unsupported contentType."
+
+    return None
 
 
 # Web-UI Views 
@@ -104,11 +139,15 @@ def index(request):
     public_entries = list(chain(public_entries, remote_public_entries))
     public_entries.sort(key=lambda e: e.published, reverse=True)
     
-    # manually set a url parameter for a mix of remote and local entries
+    # manually set URLs for a mix of remote and local entries
     for entry in public_entries:
         entry.url = get_source_entry_url(entry)
+        entry.image_url = build_entry_image_url(entry)
     for entry in followfriends_entries:
         entry.url = get_source_entry_url(entry)
+        entry.image_url = build_entry_image_url(entry)
+    for entry in entries:
+        entry.image_url = build_entry_image_url(entry)
 
     # Apply markdown to all entries if they exist
     #I should refactor this code in some othe function and then call it here. Maybe a utils.py ?  
@@ -147,6 +186,9 @@ def profile_view(request, username):
     
     entries = TextEntry.objects.filter(author=author).filter(NOT_DELETED).filter(entry_filter).order_by("-published")
 
+    for entry in entries:
+        entry.image_url = build_entry_image_url(entry)
+
     is_following = False
     is_follow_requested = False
     if current_author and not is_own_profile:
@@ -182,6 +224,7 @@ class DetailView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         entry = context['entry']
         user = self.request.user
+        entry.image_url = build_entry_image_url(entry)
 
         # deleted entries are never visible
         if entry.is_deleted:
@@ -659,6 +702,14 @@ def unfollow(request, username):
 @login_required
 def author_list(request):
     current_author = get_current_author(request)
+
+    # Refresh known remote authors from enabled nodes so users can follow them.
+    for node in Node.objects.filter(is_enabled=True):
+        try:
+            remote_node_get_authors(node, auth_required=False)
+        except Exception:
+            continue
+
     authors = Author.objects.exclude(serial=current_author.serial)
     
     following_ids = set(
@@ -1076,8 +1127,15 @@ def api_author_entries(request, author_serial):
     content_type = request.data.get('contentType', 'text/plain')
     visibility = request.data.get('visibility', 'PUBLIC')
 
+    payload_error = validate_entry_content_payload(content_type, content)
+    if payload_error:
+        return Response({"error": payload_error}, status=400)
+
     if not title.strip():
-        title = content[:80] + ('...' if len(content) > 80 else '')
+        if content_type.startswith('image/'):
+            title = 'Image post'
+        else:
+            title = content[:80] + ('...' if len(content) > 80 else '')
 
     entry = TextEntry.objects.create(
         author=author, title=title, description=description,
@@ -1106,13 +1164,17 @@ def api_author_entry_detail(request, author_serial, entry_serial):
     if request.method == 'PUT':
         if entry.is_deleted:
             return Response({"error": "Cannot edit a deleted entry."}, status=404)
+
+        next_content = request.data.get('content', entry.content)
+        next_content_type = request.data.get('contentType', entry.content_type)
+        payload_error = validate_entry_content_payload(next_content_type, next_content)
+        if payload_error:
+            return Response({"error": payload_error}, status=400)
         
         if 'title' in request.data:       entry.title = request.data['title']
-        if 'content' in request.data:     entry.content = request.data['content']
+        entry.content = next_content
         if 'description' in request.data: entry.description = request.data['description']
-        if 'contentType' in request.data:
-            ct = request.data['contentType']
-            if ct in ['text/plain', 'text/markdown']: entry.content_type = ct
+        entry.content_type = next_content_type
         if 'visibility' in request.data:
             vis = request.data['visibility']
             if vis in ['PUBLIC', 'FRIENDS', 'UNLISTED']: entry.visibility = vis
@@ -1197,7 +1259,9 @@ def api_author_following_detail(request, author_serial, foreign_author_fqid):
         try:
             target = Author.objects.get(id=foreign_author_fqid)
         except Author.DoesNotExist:
-            return Response({"error": "Target author not found."}, status=404)
+            target = get_or_create_remote_author_from_fqid(foreign_author_fqid)
+            if not target:
+                return Response({"error": "Target author not found."}, status=404)
         follow, created = Follow.objects.get_or_create(
             follower=author, following=target,
             defaults={"approved": False}

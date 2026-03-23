@@ -82,7 +82,7 @@
                                 {% if entry.content_type == 'text/markdown' %} 
                                     {{ entry.content_rendered|safe }}
                                 {% elif entry.content_type|slice:":6" == "image/" %}
-                                    <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                                    <img src="{{ entry.image_url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">
                                 {% else %}
                                     {{ entry.content }}
                                 {% endif %}
@@ -155,7 +155,7 @@
                                 {% if entry.content_type == 'text/markdown' %} 
                                     {{ entry.content_rendered|safe }}
                                 {% elif entry.content_type|slice:":6" == "image/" %}
-                                    <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                                    <img src="{{ entry.image_url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">
                                 {% else %}
                                     {{ entry.content }}
                                 {% endif %}
@@ -230,7 +230,7 @@
                                 {% if entry.content_type == 'text/markdown' %} 
                                     {{ entry.content_rendered|safe }}
                                 {% elif entry.content_type|slice:":6" == "image/" %}
-                                    <img src="/social_distribution/api/authors/{{ entry.author.serial }}/entries/{{ entry.pk }}/image" alt="Entry image" style="max-width: 300px; max-height: 300px;">
+                                    <img src="{{ entry.image_url }}" alt="Entry image" style="max-width: 300px; max-height: 300px;">
                                 {% else %}
                                     {{ entry.content }}
                                 {% endif %}

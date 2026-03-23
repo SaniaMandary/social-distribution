@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 import tempfile
 import shutil
+import base64
 
 from social_distribution.models import TextEntry, Author
 from social_distribution.utils import validate_create_author
@@ -298,4 +299,62 @@ class ImageEntryTests(TestCase):
         self.assertEqual(entry.content_type, "image/jpeg;base64")
         self.assertEqual(entry.visibility, "PUBLIC")
         self.assertTrue(bool(entry.image))
+
+
+class ImageEntryApiValidationTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user, self.author = make_user_and_author()
+        self.client.login(username="testuser", password="testpass123")
+
+    def test_api_create_image_entry_returns_image_url(self):
+        image_b64 = base64.b64encode(b"fake_png_bytes").decode("utf-8")
+        url = reverse("social_distribution:api_author_entries", args=[self.author.serial])
+        response = self.client.post(
+            url,
+            {
+                "title": "Federated image",
+                "content": image_b64,
+                "contentType": "image/png;base64",
+                "visibility": "PUBLIC",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertIn("image", data)
+        self.assertTrue(data["image"].endswith("/image/"))
+
+    def test_api_rejects_invalid_image_payload(self):
+        url = reverse("social_distribution:api_author_entries", args=[self.author.serial])
+        response = self.client.post(
+            url,
+            {
+                "title": "Broken image",
+                "content": "not_base64",
+                "contentType": "image/png;base64",
+                "visibility": "PUBLIC",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error", response.json())
+
+    def test_api_update_rejects_invalid_image_payload(self):
+        entry = make_entry(self.author, text="hello", visibility="PUBLIC")
+        url = reverse("social_distribution:api_author_entry_detail", args=[self.author.serial, entry.pk])
+        response = self.client.put(
+            url,
+            {
+                "content": "still not base64",
+                "contentType": "image/jpeg;base64",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        entry.refresh_from_db()
+        self.assertEqual(entry.content_type, "text/plain")
             

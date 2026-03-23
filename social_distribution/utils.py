@@ -1,6 +1,7 @@
 import base64 
 import logging
 import uuid
+from urllib.parse import urlsplit
 from django.http import HttpResponse
 import requests as http_requests
 from django.utils import timezone
@@ -63,23 +64,63 @@ def friends(author1, author2):
 def fetch_remote_author(author_data):
     # Get or create a remote author from an incoming API object.
     # Used by inbox to handle remote authors.
-    author_id = author_data.get('id')
+    return upsert_remote_author(author_data)
+
+
+def _normalize_remote_host(author_id, host=''):
+    if host:
+        return host.rstrip('/') + '/'
+
+    marker = '/api/authors/'
+    if marker in author_id:
+        base = author_id.split(marker, 1)[0]
+        return f"{base}/api/"
+
+    parsed = urlsplit(author_id)
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}/"
+
+    return ''
+
+
+def _coerce_uuid(value):
+    try:
+        return uuid.UUID(str(value))
+    except Exception:
+        return uuid.uuid5(uuid.NAMESPACE_URL, str(value))
+
+
+def upsert_remote_author(author_data):
+    author_id = (author_data or {}).get('id')
     if not author_id:
         return None
 
-    author, _ = Author.objects.get_or_create(
-        id=author_id,
-        defaults={
-            'serial': uuid.uuid4,
-            'username': '',
-            'host': author_data.get('host', ''),
-            'name': author_data.get('displayName', ''),
-            'picture': author_data.get('profileImage', ''),
-            'github': author_data.get('github', ''),
-            'is_local': False,
-        }
-    )
+    display_name = (author_data.get('displayName') or '').strip()
+    fallback_username = author_id.rstrip('/').split('/')[-1]
+    serial_hint = fallback_username
+
+    defaults = {
+        'serial': _coerce_uuid(serial_hint),
+        'username': display_name or fallback_username,
+        'host': _normalize_remote_host(author_id, author_data.get('host', '')),
+        'is_local': False,
+        'is_approved': True,
+        'name': display_name or fallback_username,
+        'description': 'remote author',
+        'picture': author_data.get('profileImage', ''),
+        'github': author_data.get('github', ''),
+    }
+    author, _ = Author.objects.update_or_create(id=author_id, defaults=defaults)
     return author
+
+
+def get_or_create_remote_author_from_fqid(author_fqid):
+    if not author_fqid:
+        return None
+    return upsert_remote_author({
+        'id': author_fqid,
+        'displayName': author_fqid.rstrip('/').split('/')[-1],
+    })
 
 
 
@@ -285,40 +326,36 @@ def remote_node_get(node, endpoint: str, auth_required=True):
 # returns: list of Author objects
 def remote_node_get_authors(node, auth_required=True):
     response = remote_node_get(node, "api/authors/", auth_required=auth_required)
-    authors = response.json().get('authors', []) 
+    if getattr(response, 'status_code', 500) != 200:
+        return []
+
+    body = response.json()
+    authors = body.get('authors', body.get('src', []))
     authors_actual = []
     for i in range(len(authors)):
         author = convert_remote_author_to_local(authors[i])
-        authors_actual.append(author)
+        if author is not None:
+            authors_actual.append(author)
     return authors_actual
 
 # get a list of remote entries for a given author from a node
 # returns: list of TextEntry objects
 def remote_node_get_entries(node, author, auth_required=True):
-    response = remote_node_get(node, f"api/authors/{author.serial}/entries/", auth_required=auth_required)
+    author_key = author.id.rstrip('/').split('/')[-1]
+    response = remote_node_get(node, f"api/authors/{author_key}/entries/", auth_required=auth_required)
+    if getattr(response, 'status_code', 500) != 200:
+        return []
     entries = response.json().get('src', []) 
     entries_actual = []
     for i in range(len(entries)):
         entry = convert_remote_entry_to_local(entries[i], author)
-        entries_actual.append(entry)
+        if entry is not None:
+            entries_actual.append(entry)
     return entries_actual
 
 def convert_remote_author_to_local(author_data):
     # Convert incoming author data from a remote node into a local Author object.
-    serial = author_data.get('id').split("/")[-1]
-    return Author(
-        id=author_data.get('id'),
-        serial=serial,
-        username=author_data.get('displayName', ''),
-
-        host=author_data.get('host', ''),
-        is_local=False,
-        is_approved=True,  # Assume remote authors are approved by default
-        name=author_data.get('displayName', ''),
-        description="remote author",
-        picture=author_data.get('profileImage', ''),
-        github=author_data.get('github', ''),
-    )
+    return upsert_remote_author(author_data)
 
 def convert_remote_entry_to_local(entry_data, author):
     # Convert incoming entry data from a remote node into a local TextEntry object.

@@ -12,20 +12,21 @@
     <ul>
         {% for author in authors %}
             <li>
-            {% if author.is_local %}
-                <a href="{% url 'social_distribution:profile' author.username %}">{{ author.name}}</a>
-            {% else %}
-                 {{ author.name }} <small>(remote)</small>
-                {% if author.is_followed %}
-                    <span>✓ Request Sent</span>
+                {% if author.is_local %}
+                    <a href="{% url 'social_distribution:profile' author.username %}">{{ author.name }}</a>
                 {% else %}
-                 <form method="post" action="{% url 'social_distribution:follow_by_serial' serial=author.serial %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit">Follow</button>
-                </form>
-            {% endif %}
+                    {{ author.name }} <small>(remote)</small>
+                    {% if author.is_followed %}
+                        <span>✓ Request Sent</span>
+                    {% else %}
+                        <form method="post" action="{% url 'social_distribution:follow_by_serial' serial=author.serial %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit">Follow</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
             </li>
-        {% endif %}
+        {% empty %}
             <li>No authors yet.</li>
         {% endfor %}
     </ul>

@@ -35,13 +35,14 @@ class EntrySerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     contentType = serializers.CharField(source='content_type')
     web = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
 
     class Meta:
         model = TextEntry
         fields = ['type', 'id', 'web', 'title', 'description', 'contentType', 
-                  'content', 'author', 'comments', 'likes', 'published', 'visibility']
+              'content', 'image', 'author', 'comments', 'likes', 'published', 'visibility']
 
     def get_type(self, obj):
         return "entry"
@@ -54,6 +55,11 @@ class EntrySerializer(serializers.ModelSerializer):
         if request: 
             return request.build_absolute_uri(f'/social_distribution/authors/{obj.author.username}/entries/{obj.pk}')
         return f'{obj.author.host}/authors/{obj.author.username}/entries/{obj.pk}'
+
+    def get_image(self, obj):
+        if not obj.content_type.startswith('image/'):
+            return None
+        return f"{obj.fqid.rstrip('/')}/image/"
         
     def get_comments(self, obj):
         return build_comments_object(obj, self.context)
