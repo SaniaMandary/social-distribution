@@ -1035,6 +1035,7 @@ All follow endpoints are form-based browser endpoints, require authentication, a
 | `GET /following/` | GET | View the list of authors the current user is following (approved follows). |
 | `GET /friends/` | GET | View mutual follows (authors where each party has an approved follow of the other). |
 | `GET /authors/` | GET | View all other authors registered on this node, excluding yourself. |
+| `GET /nodes/` | GET | View all nodes known to this server. |
 
 All of the above require authentication and redirect to a relevant page on success. The follow/unfollow endpoints only accept `POST` — a `GET` to `/follow/{username}/` will redirect to the target author's profile page without creating a follow.
 
