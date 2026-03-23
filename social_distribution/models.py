@@ -9,6 +9,7 @@ class Author(models.Model):
     username = models.CharField(max_length=150, blank=True, default='') 
 
     host = models.URLField(max_length=500, blank=True, default='') 
+    web = models.URLField(max_length=500, blank=True, default='')
     is_local = models.BooleanField(default=True)
     is_approved = models.BooleanField(default=False)
     name = models.CharField(max_length=200)
@@ -26,14 +27,15 @@ class TextEntry(models.Model):
     CONTENT_TYPE_CHOICES = [
         ('text/plain', 'Plain Text'),
         ('text/markdown', 'CommonMark'),
-        ('image/png', 'PNG Image'),
-        ('image/jpeg', 'JPEG Image'),
-        ('image/gif', 'GIF Image'),
+        ('image/png;base64', 'PNG Image'),
+        ('image/jpeg;base64', 'JPEG Image'),
+        ('application/base64', 'Generic Binary Image'),
     ]
 
     SOURCE_TYPE = [
-        ('native', 'Native'), 
-        ('github', 'GitHub'), 
+        ('native', 'Native'),
+        ('github', 'GitHub'),
+        ('remote', 'Remote'),
     ]
 
     VISIBILITY_CHOICES = [
@@ -54,7 +56,6 @@ class TextEntry(models.Model):
     title = models.CharField(max_length=250, default='')
     description = models.CharField(max_length=500, blank=True, default='')
     content = models.TextField(blank=True, default='')
-    image = models.ImageField(upload_to='entries/', blank=True, null=True)
     published = models.DateTimeField(default=timezone.now)
     
     content_type = models.CharField(

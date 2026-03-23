@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.urls import reverse
 from datetime import datetime, timezone as dt_tz
 from rest_framework.response import Response
+from django.utils.dateparse import parse_datetime
 from .models import (
     Node, Like, Comment, TextEntry, Author, Follow,
 )
@@ -48,6 +49,7 @@ def validate_create_author(username, node_host):
             serial=author_uuid,
             username=username,
             host=f"{node_host}/social_distribution/api/",
+            web=f"{node_host}/social_distribution/authors/{username}",
             name=username,
         )
 
@@ -83,13 +85,6 @@ def _normalize_remote_host(author_id, host=''):
     return ''
 
 
-def _coerce_uuid(value):
-    try:
-        return uuid.UUID(str(value))
-    except Exception:
-        return uuid.uuid5(uuid.NAMESPACE_URL, str(value))
-
-
 def upsert_remote_author(author_data):
     author_id = (author_data or {}).get('id')
     if not author_id:
@@ -97,12 +92,15 @@ def upsert_remote_author(author_data):
 
     display_name = (author_data.get('displayName') or '').strip()
     fallback_username = author_id.rstrip('/').split('/')[-1]
-    serial_hint = fallback_username
+
+    # Seed the serial from the full FQID — globally unique, so no cross-node collisions.
+    serial = uuid.uuid5(uuid.NAMESPACE_URL, author_id)
 
     defaults = {
-        'serial': _coerce_uuid(serial_hint),
+        'serial': serial,
         'username': display_name or fallback_username,
         'host': _normalize_remote_host(author_id, author_data.get('host', '')),
+        'web': author_data.get('web', ''),
         'is_local': False,
         'is_approved': True,
         'name': display_name or fallback_username,
@@ -194,10 +192,18 @@ def build_comments_object(entry, context, page_size=5):
     comments = Comment.objects.filter(local_entry=entry).order_by('-published')
     total = comments.count()
     first_page = comments[:page_size]
+
+    if entry.remote_fqid:
+        web = entry.remote_fqid.replace('/api/authors/', '/authors/')
+    elif entry.author.web:
+        web = f"{entry.author.web.rstrip('/')}/entries/{entry.pk}"
+    else:
+        web = entry.fqid
+
     return {
         "type": "comments",
         "id": f"{entry.fqid}/comments",
-        "web": f"{entry.author.host}/authors/{entry.author.serial}/entries/{entry.pk}",
+        "web": web,
         "page_number": 1,
         "size": page_size,
         "count": total,
@@ -209,19 +215,24 @@ def build_comments_object(entry, context, page_size=5):
 
 
 def fetch_github_entries(author, cooldown):
+    """
+    Fetch new GitHub public events for author and save them as PUBLIC entries.
+
+    Returns a list of the newly created TextEntry objects (saved, with PKs).
+    Returns an empty list if nothing new was fetched or the cooldown blocked the call.
+    """
     if not author.github:
-        return
+        return []
 
     if cooldown: 
         if author.github_last_polled:
             elapsed = timezone.now() - author.github_last_polled
             if elapsed.total_seconds() < 900:
-                return
-
+                return []
 
     github_username = author.github.rstrip('/').split('/')[-1]
     if not github_username:
-        return
+        return []
 
     try:
         response = http_requests.get(
@@ -231,13 +242,20 @@ def fetch_github_entries(author, cooldown):
         )
         if response.status_code != 200:
             logger.warning(f"GitHub API returned {response.status_code} for {github_username}")
-            return
+            return []
         events = response.json()
     except Exception as e:
         logger.error(f"GitHub fetch failed: {e}")
-        return
+        return []
 
     last_polled = author.github_last_polled
+    
+    existing_times = set(
+        TextEntry.objects.filter(
+            author=author, source_type='github'
+        ).values_list('published', flat=True)
+    )
+
     new_entries = []
 
     for event in events:
@@ -248,7 +266,12 @@ def fetch_github_entries(author, cooldown):
         except Exception:
             continue
 
+        # Skip anything at or before last_polled
         if last_polled and event_time <= last_polled:
+            continue
+
+        # Skip if an entry with this exact timestamp already exists
+        if event_time in existing_times:
             continue
 
         event_type = event.get("type", "")
@@ -286,6 +309,7 @@ def fetch_github_entries(author, cooldown):
         elif event_type == "ForkEvent":
             forkee = payload.get("forkee", {}).get("full_name", "")
             description = f"Forked [{repo_name}](https://github.com/{repo_name}) to [{forkee}](https://github.com/{forkee})"
+
         else:
             continue
         
@@ -299,34 +323,39 @@ def fetch_github_entries(author, cooldown):
             source_type='github',
         ))
 
-    if new_entries:
-        TextEntry.objects.bulk_create(new_entries)
+    saved = []
+    for entry in new_entries:
+        entry.save()
+        saved.append(entry)
 
+    # Always update last_polled, even if no new entries, so the cooldown works
+    # correctly regardless of whether bulk_create produced anything.
     author.github_last_polled = timezone.now()
     author.save(update_fields=['github_last_polled'])
+
+    return saved
 
 # make a get request to a node with optional auth, used for fetching remote data from other nodes.
 def remote_node_get(node, endpoint: str, auth_required=True):
     if not node.is_enabled:
-        response = HttpResponse(
-            "Node is disabled", 
-            status=503, 
-            reason="Node is disabled"
-        )
-        response.reason = "Node is disabled"
-        return response
+        logger.warning(f"Attempted to GET from disabled node {node.url}")
+        return None
 
     url = node.url.rstrip('/') + '/' + endpoint.lstrip('/')
-    if auth_required:
-        return http_requests.get(url, auth=(node.outgoing_username, node.outgoing_password), timeout=5)
-    else:
-        return http_requests.get(url, timeout=5)
+    try:
+        if auth_required:
+            return http_requests.get(url, auth=(node.outgoing_username, node.outgoing_password), timeout=5)
+        else:
+            return http_requests.get(url, timeout=5)
+    except Exception as e:
+        logger.error(f"Failed to GET from {url}: {e}")
+        return None
 
 # get a list of remote authors from a node
 # returns: list of Author objects
 def remote_node_get_authors(node, auth_required=True):
     response = remote_node_get(node, "api/authors/", auth_required=auth_required)
-    if getattr(response, 'status_code', 500) != 200:
+    if response is None or response.status_code != 200:
         return []
 
     body = response.json()
@@ -343,7 +372,7 @@ def remote_node_get_authors(node, auth_required=True):
 def remote_node_get_entries(node, author, auth_required=True):
     author_key = author.id.rstrip('/').split('/')[-1]
     response = remote_node_get(node, f"api/authors/{author_key}/entries/", auth_required=auth_required)
-    if getattr(response, 'status_code', 500) != 200:
+    if response is None or response.status_code != 200:
         return []
     entries = response.json().get('src', []) 
     entries_actual = []
@@ -358,42 +387,51 @@ def convert_remote_author_to_local(author_data):
     return upsert_remote_author(author_data)
 
 def convert_remote_entry_to_local(entry_data, author):
-    # Convert incoming entry data from a remote node into a local TextEntry object.
-    from .serializers import EntrySerializer
-    r_entry = EntrySerializer(data=entry_data)
-    if r_entry.is_valid():
-        r_entry = TextEntry(**r_entry.validated_data) # https://stackoverflow.com/questions/37232436/django-rest-serializer-create-object-without-saving
-        r_entry.source_type = 'remote'
-        r_entry.remote_fqid = entry_data.get('id', '')
-        r_entry.author = author
-        return r_entry
-    else:
-        print("Invalid entry data:", r_entry.errors)
+    """Convert incoming entry data from a remote node into a saved TextEntry object.
+    """
+    entry_id = entry_data.get('id', '')
+    if not entry_id:
         return None
 
-    return TextEntry(
-        author=author,
-        remote_fqid=entry_data.get('id', ''),
-        title=entry_data.get('title', ''),
-        description=entry_data.get('description', ''),
-        content=entry_data.get('content', ''),
-        image=entry_data.get('image', ''),
-        published=entry_data.get('published', timezone.now()),
+    raw_published = entry_data.get('published')
+    if raw_published:
+        try:
+            published = parse_datetime(raw_published) or timezone.now()
+        except Exception:
+            published = timezone.now()
+    else:
+        published = timezone.now()
 
-        content_type=entry_data.get('contentType', 'text/markdown'),
-        source_type=entry_data.get('sourceType', 'remote'),
-        visibility=entry_data.get('visibility', 'PUBLIC'),
+    visibility = entry_data.get('visibility', 'PUBLIC')
+    if visibility == 'DELETED':
+        return None
+
+    entry, _ = TextEntry.objects.update_or_create(
+        remote_fqid=entry_id,
+        defaults={
+            'author': author,
+            'title': entry_data.get('title', ''),
+            'description': entry_data.get('description', ''),
+            'content': entry_data.get('content', ''),
+            'content_type': entry_data.get('contentType', 'text/plain'),
+            'source_type': 'remote',
+            'visibility': visibility,
+            'published': published,
+        }
     )
+    return entry
 
 def get_source_entry_url(entry):
-    if entry.source_type == 'remote':
-        # replace https://herokuapp.com/social_distribution/api/authors/uuid/entries/1
-        # with https://herokuapp.com/social_distribution/entries/1
-        # this may be a source of incompatibility if other groups use fqid purely
-
-        return entry.remote_fqid.replace(f"api/authors/{entry.author.serial}/entries/", "")
-    else:
-        return reverse("social_distribution:detail", kwargs={"pk": entry.pk})
+    """
+    Returns the frontend URL for linking to an entry in the UI.
+    For remote entries, derives the URL from the remote FQID by replacing the API path.
+    For local entries, returns the local detail view URL.
+    """
+    if entry.remote_fqid:
+        # Convert API FQID to frontend web URL:
+        # http://node/api/authors/{serial}/entries/{id} -> http://node/authors/{serial}/entries/{id}
+        return entry.remote_fqid.replace('/api/authors/', '/authors/')
+    return reverse("social_distribution:detail", kwargs={"pk": entry.pk})
 
 
 def authenticate_remote_node(request):

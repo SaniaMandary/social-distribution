@@ -3,25 +3,27 @@ from . import views
 
 app_name = "social_distribution"
 urlpatterns = [
-    #Web UI - General 
+    # Web UI - General 
     path("", views.index, name="index"),
     path("<int:pk>/", views.DetailView.as_view(), name="detail"),
+    path("authors/<str:author_username>/entries/<int:pk>/", views.DetailView.as_view(), name="author_entry_detail_web"),
     path("profiles/<str:username>/", views.profile_view, name="profile"),
+    path("authors/<str:username>/", views.profile_view, name="author_profile"),
     path("login/", views.login_view, name="login"),
     path("newentry/",views.newentry_view,name="newentry"),
     path("changeprofile/",views.changeprofile_view,name="changeprofile"),
     path("nodes/", views.nodes_view, name="nodes"),
     path("discover/", views.discover_remote_authors, name="discover"),
 
-    #Web UI - Social (Follow, Unfollow)
+    # Web UI - Social (Follow, Unfollow)
     path("follow/<str:username>/", views.follow_author, name="follow_author"),
     path("follow_by_serial/<uuid:serial>/", views.follow_by_serial, name="follow_by_serial"),
     path("unfollow/<str:username>/", views.unfollow, name="unfollow"),
     path("follow_requests/", views.follow_requests, name="follow_requests"),
-    path("approve_follow/<str:username>/", views.approve_follow, name="approve_follow"),
-    path("reject_follow/<str:username>/", views.reject_follow, name="reject_follow"),
+    path("approve_follow/<uuid:serial>/", views.approve_follow, name="approve_follow"),
+    path("reject_follow/<uuid:serial>/", views.reject_follow, name="reject_follow"),
 
-    #Web UI - List views
+    # Web UI - List views
     path("authors/", views.author_list, name="author_list"),
     path("followers/", views.followers_list, name="followers_list"),
     path("following/", views.following_list, name="following_list"),
@@ -51,7 +53,7 @@ urlpatterns = [
     path("api/authors/<uuid:author_serial>/following/<path:foreign_author_fqid>/", views.api_author_following_detail, name="api_author_following_detail"),
     path("api/authors/<uuid:author_serial>/follow_requests/", views.api_follow_requests, name="api_follow_requests"),
 
-    # inbox API. activity 
+    # Inbox API
     path("api/authors/<uuid:author_serial>/inbox/", views.api_inbox, name="api_inbox"),
     
     # Authors entries, specific Author entry, specific Author entry image. 
@@ -73,23 +75,16 @@ urlpatterns = [
     path("api/authors/<uuid:author_serial>/liked/<int:like_serial>/", views.api_author_like_by_serial, name="api_author_like_by_serial"),
     path("api/liked/<path:like_fqid>/", views.api_like_fqid, name="api_like_fqid"),
 
-    # Global fqid based entry details. 
+    # FQID-based liked and commented
+    path("api/authors/<path:author_fqid>/liked/", views.api_author_liked_fqid, name="api_author_liked_fqid"),
+    path("api/authors/<path:author_fqid>/commented/", views.api_author_commented_fqid, name="api_author_commented_fqid"),
+
+    # FQID-based single author lookup
+    path("api/authors/<path:author_fqid>/", views.api_single_author_fqid, name="api_single_author_fqid"),
+
+    # Global FQID-based entry endpoints
     path("api/entries/<path:entry_fqid>/image/", views.api_entry_fqid_image, name="api_entry_fqid_image"),
     path("api/entries/<path:entry_fqid>/comments/", views.api_entry_fqid_comments, name="api_entry_fqid_comments"),
     path("api/entries/<path:entry_fqid>/likes/", views.api_entry_fqid_likes, name="api_entry_fqid_likes"),
     path("api/entries/<path:entry_fqid>/", views.api_entry_fqid, name="api_entry_fqid"),
-
-    #old paths 
-    # Author-scoped entry API
-    # path("api/authors/<str:username>/entries/<int:entry_id>", views.public_user_entry, name="public_user_entry"), -> api_author_entry_detail
-    # path("api/entries/<int:entry_id>", views.public_get_entry, name="public_get_entry"), -> api_entry_fqid
-    # path("api/authors/<str:username>/entries/", views.public_user_entries, name="public_user_entries"), -> api_author_entries
-    # path("api/comments/<int:comment_id>/likes/", views.add_like_comment, name="add_like_comment"), -> api_comment_likes
-    # path("api/entries/<int:entry_id>/comments/add/", views.post_entry_comment, name="add_comment"), -> api_author_commented post
-    # path("api/entries/<int:entry_id>/comments/", views.get_comments, name="get_comments"), -> api_entry_comments
-    # path("api/entries/<int:entry_id>/", views.api_entry_detail, name="api_entry_detail"),
-    # path("api/authors/<str:username>/entries/<int:entry_id>/image", views.get_entry_image, name="get_entry_image"),
-    # path("api/likes/add/<int:entry_id>/", views.add_like_entry, name="add_like_entry"), -> api_entry_likes
-    # path("api/likes/", views.add_like, name="add_like"),
-    # path("api/likes/<path:object_id>/", views.get_likes, name="get_likes"),
 ]

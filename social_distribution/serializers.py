@@ -17,16 +17,18 @@ class AuthorSerializer(serializers.ModelSerializer):
 
     def get_type(self, obj):
         return "author"
-        
 
     def get_host(self, obj):
-        return obj.host
+        h = obj.host or ''
+        return h if h.endswith('/') else h + '/'
 
     def get_web(self, obj):
+        if not obj.is_local:
+            return obj.web or obj.id
         request = self.context.get('request')
         if request:
             return request.build_absolute_uri(f'/social_distribution/authors/{obj.username}')
-        return f'{obj.host}/authors/{obj.username}'
+        return obj.web or obj.id
 
 
 class EntrySerializer(serializers.ModelSerializer):
@@ -50,21 +52,27 @@ class EntrySerializer(serializers.ModelSerializer):
     def get_id(self, obj):
         return obj.fqid
 
-    def get_web(self, obj): 
+    def get_web(self, obj):
+        if obj.remote_fqid:
+            web = obj.remote_fqid.replace('/api/authors/', '/authors/')
+            # If no replacement happened, fall back to the fqid itself as a web link
+            return web
         request = self.context.get('request')
-        if request: 
-            return request.build_absolute_uri(f'/social_distribution/authors/{obj.author.username}/entries/{obj.pk}')
-        return f'{obj.author.host}/authors/{obj.author.username}/entries/{obj.pk}'
+        if request:
+            return request.build_absolute_uri(
+                f'/social_distribution/authors/{obj.author.username}/entries/{obj.pk}'
+            )
+        return f'{obj.author.host.rstrip("/")}/authors/{obj.author.username}/entries/{obj.pk}'
 
     def get_image(self, obj):
         if not obj.content_type.startswith('image/'):
             return None
         return f"{obj.fqid.rstrip('/')}/image/"
-        
+
     def get_comments(self, obj):
         return build_comments_object(obj, self.context)
-        
-    def get_likes(self, obj): 
+
+    def get_likes(self, obj):
         web_url = self.get_web(obj)
         return build_likes_object(obj.fqid, web_url, self.context)
 
@@ -105,35 +113,45 @@ class CommentSerializer(serializers.ModelSerializer):
         return obj.fqid
 
     def get_web(self, obj):
-        # Could be the entry page or a dedicated comment page
-        request = self.context.get('request')
-        if request:
-            # Default to the entry page
-            return request.build_absolute_uri(f'/social_distribution/authors/{obj.author.username}/comments/{obj.pk}')
-        return f'{obj.author.host}authors/{obj.author.username}/comments/{obj.pk}'
-
+        # The comment's web URL is the entry page where you can view the comment in context.
+        # If we know the local entry, build the proper frontend URL for it.
+        if obj.local_entry:
+            entry = obj.local_entry
+            if entry.remote_fqid:
+                return entry.remote_fqid.replace('/api/authors/', '/authors/')
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(
+                    f'/social_distribution/authors/{entry.author.username}/entries/{entry.pk}'
+                )
+        # Fallback: point to the entry URL stored on the comment
+        return obj.entry or obj.fqid
 
     def get_likes(self, obj):
-        web_url = f"{obj.author.host}authors/{obj.author.username}/comments/{obj.pk}/likes"
+        # Build the likes web URL under the comment's fqid path
+        web_url = f"{obj.fqid}/likes"
         return build_likes_object(obj.fqid, web_url, self.context)
-
 
 
 class FollowSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
+    state = serializers.SerializerMethodField()
     actor = serializers.SerializerMethodField()
     object = serializers.SerializerMethodField()
 
     class Meta:
         model = Follow
-        fields = ['type', 'summary', 'actor', 'object']
+        fields = ['type', 'summary', 'state', 'actor', 'object']
 
     def get_type(self, obj):
         return "follow"
 
     def get_summary(self, obj):
         return f"{obj.follower.name} wants to follow {obj.following.name}"
+
+    def get_state(self, obj):
+        return "accepted" if obj.approved else "requesting"
 
     def get_actor(self, obj):
         return AuthorSerializer(obj.follower, context=self.context).data
