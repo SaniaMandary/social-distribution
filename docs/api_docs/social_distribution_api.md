@@ -933,7 +933,45 @@ GET /social_distribution/api/authors/?page=1&size=5
 ```
 
 ---
+### GET `/api/authors/{uuid}/`
 
+**When to use:** Retrieve detailed information about a specific author by their id.
+
+**How to use**: GET with the author's uuid. Returns information about the author.
+
+**Auth Required:** No
+**Paginated:** No
+
+#### Response Fields
+
+| Field | Type | Example | Description |
+|-------|------|---------|-------------|
+| `type`| string | `"authors"` | Always `"authors"`. |
+| `id` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/authors/410baaaf-6974-4a09-a708-34eb4396e813"` | Author uuid. |
+| `host` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/"` | API url of the node. |
+| `displayName | string | `"testuser#2"` | The author's username. |
+| `github` | string | `""` | Github profile link (can be empty). |
+| `profileImage` | `""` | profile image url (can be empty). |
+| `web` | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/authors/testuser#2"` | Link to the author's profile page. |
+
+#### Request Example
+```
+GET /social_distribution/api/authors/410baaaf-6974-4a09-a708-34eb4396e813/
+```
+
+####Respone Example
+```json
+{
+    "type": "author",
+    "id": "https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/authors/410baaaf-6974-4a09-a708-34eb4396e813",
+    "host": "https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/",
+    "displayName": "testuser#2",
+    "github": "",
+    "profileImage": "",
+    "web": "https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/authors/testuser#2"
+}
+
+```
 ### GET `/api/authors/{username}/followers/`
 
 **When to use:** Retrieve the list of authors who are approved followers of `{username}`.
