@@ -382,6 +382,10 @@ def deleteentry(request, entry_id):
     entry.is_deleted = True
     print(entry.is_deleted)
     entry.save()
+
+    #push to remote follower inboxes 
+    send_entry_to_followers(entry, request)
+    
     return Response({"success": True, "message": "Entry deleted."}, status=200)
 
 @csrf_exempt
@@ -402,6 +406,9 @@ def editentry(request, entry_id):
     if new_visibility in ['PUBLIC', 'FRIENDS', 'UNLISTED']:
         entry.visibility = new_visibility
     entry.save()
+
+    #push to remote follower inboxes 
+    send_entry_to_followers(entry, request)
 
     serializer = EntrySerializer(entry, context={'request': request})
     return Response(serializer.data, status=200)
