@@ -951,8 +951,8 @@ GET /social_distribution/api/authors/?page=1&size=5
 | `host` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/api/"` | API url of the node. |
 | `displayName | string | `"testuser#2"` | The author's username. |
 | `github` | string | `""` | Github profile link (can be empty). |
-| `profileImage` | `""` | profile image url (can be empty). |
-| `web` | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/authors/testuser#2"` | Link to the author's profile page. |
+| `profileImage` | string | `""` | profile image url (can be empty). |
+| `web` | string | `"https://blanchedalmond-node1-0f1bf9c33bf8.herokuapp.com/social_distribution/authors/testuser#2"` | Link to the author's profile page. |
 
 #### Request Example
 ```
