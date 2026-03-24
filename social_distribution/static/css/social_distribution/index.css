@@ -294,6 +294,7 @@ input{
 }
 
 
+
 .entries.grid-view .entry-card-meta {
     flex-wrap: wrap;
     gap: 4px;
@@ -313,12 +314,14 @@ input{
 .entries.grid-view .entry-card {
     min-height: 160px;
     max-height: 200px;
-    overflow: hidden;
+    height: 100%;
 }
 
 .entries.grid-view .entry-card-link-wrapper {
     margin: 0;
     padding: 0;
+    border-bottom: none;
+    min-height: 160px;
 }
 
 /*-Peek at an entry */
