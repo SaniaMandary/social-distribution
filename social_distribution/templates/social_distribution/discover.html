@@ -16,6 +16,10 @@
             <small>({{ author.host }})</small>
             {% if author.is_followed %}
                 <span>✓ Request Sent</span>
+                <form method="post" action="{% url 'social_distribution:unfollow' username=author.username %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit">Unfollow</button>
+                </form>
             {% else %}
                 <form method="post" action="{% url 'social_distribution:follow_by_serial' serial=author.serial %}" style="display:inline;">
                     {% csrf_token %}

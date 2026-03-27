@@ -14,7 +14,8 @@ from ..utils import (
     NOT_DELETED, get_current_author, get_source_entry_url, friends,
     fetch_github_entries, render_markdown_entries, send_entry_to_followers,
     remote_node_get, remote_node_get_authors, remote_node_get_entries,
-    upsert_remote_author, get_author_by_serial,
+    upsert_remote_author, get_author_by_serial, remote_node_get_is_following,
+    get_node_for_author
 )
 from .api.entries import build_entry_image_url
  
@@ -26,7 +27,7 @@ def index(request):
     if not request.user.is_authenticated: # authenticated personal page view
         return redirect('/social_distribution/login')
     
-    nodes = Node.objects.all()
+    nodes = Node.objects.filter(is_enabled=True)
 
     author = get_current_author(request)
 
@@ -334,12 +335,20 @@ def author_list(request):
 def followers_list(request):
     current_author = get_current_author(request)
 
+    remote_followers = []
+    for node in Node.objects.filter(is_enabled=True):
+        for author in remote_node_get_authors(node, auth_required=True):
+            if remote_node_get_is_following(node, current_author, author, auth_required=True):
+                remote_followers.append(Follow(following=current_author, follower=author, approved=True))
+
     followers = Follow.objects.filter(
         following=current_author,
         approved=True
     ).select_related('follower')
 
-    return render(request, "social_distribution/followers_list.html", {"followers": followers, "author": current_author})
+    all_followers = list(followers) + remote_followers
+
+    return render(request, "social_distribution/followers_list.html", {"followers": all_followers, "author": current_author})
 
 @login_required
 def following_list(request):
@@ -359,13 +368,26 @@ def friends_list(request):
     current_author = get_current_author(request) 
     
     # authors who current_author follows
-    following_ids = Follow.objects.filter(
+    following = Follow.objects.filter(
         follower=current_author, approved=True
-    ).values_list('following_id', flat=True)
+    )
+    following_ids = following.values_list('following_id', flat=True)
+
+    remote_friends = []
+    for follow in following:
+        if not follow.following.is_local:
+            node = get_node_for_author(follow.following)
+            isFollowing = remote_node_get_is_following(node, current_author, follow.following, auth_required=True)
+            if isFollowing:
+                remote_friends.append(follow.following)
+                print("REMOTE FRIEND", follow.following.name)
     
     # of those, who also follows current_author back
-    all_friends = Author.objects.filter(id__in=following_ids).filter(
+    local_friends = Author.objects.filter(id__in=following_ids).filter(
         following__following=current_author,
         following__approved=True
         ).distinct()
+    
+    all_friends = list(local_friends) + remote_friends
+
     return render(request, "social_distribution/friends_list.html", {"friends_list": all_friends})

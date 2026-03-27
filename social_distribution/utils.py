@@ -382,6 +382,20 @@ def remote_node_get_entries(node, author, auth_required=True):
             entries_actual.append(entry)
     return entries_actual
 
+def remote_node_get_is_following(node, author, target_author, auth_required=True):
+    author_key = author.id.rstrip('/').split('/')[-1]
+    target_author_key = target_author.id.rstrip('/').split('/')[-1]
+    response = remote_node_get(node, f"api/authors/{target_author_key}/following/{author.fqid}", auth_required=auth_required)
+    
+    if response.status_code == 200:
+        return True
+    elif response.status_code == 404:
+        return False
+    else:
+        print(f"Unexpected response checking following status: {response.status_code}")
+        return False
+    pass
+
 def convert_remote_author_to_local(author_data):
     # Convert incoming author data from a remote node into a local Author object.
     return upsert_remote_author(author_data)
@@ -559,8 +573,6 @@ def send_follow_to_inbox(follow_obj, request):
 
     serialized = FollowSerializer(follow_obj, context={'request': request}).data
     send_to_inbox(target, serialized)
-
-
 
 # When a local author likes something, PSOT the like to the entry/comment author's inbox 
 # if they are a remote author 
