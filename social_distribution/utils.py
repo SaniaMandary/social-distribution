@@ -56,11 +56,26 @@ def validate_create_author(username, node_host):
         
 
 def friends(author1, author2):
-    return (
+    isFriends = (
         Follow.objects.filter(follower=author1, following=author2, approved=True).exists()
         and
         Follow.objects.filter(follower=author2, following=author1, approved=True).exists()
     )
+
+    # does author1 have a remote friend author2?
+    if not isFriends:
+        node = get_node_for_author(author2)
+        if node:
+            isFriends = Follow.objects.filter(follower=author1, following=author2, approved=True).exists() and remote_node_get_is_following(node, author1, author2, auth_required=True)
+    
+    # does author2 have a remote friend author1?
+    if not isFriends:
+        node = get_node_for_author(author1)
+        if node:
+            isFriends = Follow.objects.filter(follower=author2, following=author1, approved=True).exists() and remote_node_get_is_following(node, author2, author1, auth_required=True)
+
+    return isFriends
+
 
 
 def fetch_remote_author(author_data):
@@ -396,6 +411,14 @@ def remote_node_get_is_following(node, author, target_author, auth_required=True
         return False
     pass
 
+def remote_node_get_followers(current_author, auth_required=True):
+    remote_followers = []
+    for node in Node.objects.filter(is_enabled=True):
+        for author in remote_node_get_authors(node, auth_required=auth_required):
+            if remote_node_get_is_following(node, current_author, author, auth_required=auth_required):
+                remote_followers.append(Follow(following=current_author, follower=author, approved=auth_required))
+    return remote_followers
+
 def convert_remote_author_to_local(author_data):
     # Convert incoming author data from a remote node into a local Author object.
     return upsert_remote_author(author_data)
@@ -447,6 +470,16 @@ def get_source_entry_url(entry):
         return entry.remote_fqid.replace('/api/authors/', '/authors/')
     return reverse("social_distribution:detail", kwargs={"pk": entry.pk})
 
+# get all followers including remote ones, assumes remote is the ground truth for follow status
+def get_all_followers(for_author):
+    remote_followers = remote_node_get_followers(for_author, auth_required=True)
+
+    followers = Follow.objects.filter(
+        following=for_author,
+        approved=True
+    ).select_related('follower')
+
+    return list(followers) + remote_followers
 
 def authenticate_remote_node(request):
     auth_header = request.META.get('HTTP_AUTHORIZATION', '')
@@ -545,21 +578,22 @@ def send_entry_to_followers(entry, request):
     # Determine who should receive this entry
     if entry.visibility in ('PUBLIC', 'UNLISTED'):
         # send to all followers
-        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        follows = get_all_followers(author)
         recipients = [f.follower for f in follows]
     elif entry.visibility == 'FRIENDS':
         # ssnd only to friends (mutual follows)
-        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        follows = get_all_followers(author)
         recipients = [f.follower for f in follows if friends(author, f.follower)]
     elif entry.visibility == 'DELETED':
         # send delete notification to all followers
-        follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+        follows = get_all_followers(author)
         recipients = [f.follower for f in follows]
     else:
         return
 
     for recipient in recipients:
         if not recipient.is_local:
+            print("SENDING TO", recipient.name)
             send_to_inbox(recipient, serialized)
 
 
@@ -611,7 +645,7 @@ def send_like_to_followers(like, entry, request):
         return
 
     serialized = LikeSerializer(like, context={'request': request}).data
-    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    follows = get_all_followers(author)
     for f in follows:
         if not f.follower.is_local:
             send_to_inbox(f.follower, serialized)
@@ -629,7 +663,8 @@ def send_comment_to_followers(comment, entry, request):
         return
 
     serialized = CommentSerializer(comment, context={'request': request}).data
-    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    follows = get_all_followers(author)
     for f in follows:
         if not f.follower.is_local:
             send_to_inbox(f.follower, serialized)
+

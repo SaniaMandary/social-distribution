@@ -15,7 +15,7 @@ from ..utils import (
     fetch_github_entries, render_markdown_entries, send_entry_to_followers,
     remote_node_get, remote_node_get_authors, remote_node_get_entries,
     upsert_remote_author, get_author_by_serial, remote_node_get_is_following,
-    get_node_for_author
+    get_node_for_author, get_all_followers
 )
 from .api.entries import build_entry_image_url
  
@@ -335,18 +335,7 @@ def author_list(request):
 def followers_list(request):
     current_author = get_current_author(request)
 
-    remote_followers = []
-    for node in Node.objects.filter(is_enabled=True):
-        for author in remote_node_get_authors(node, auth_required=True):
-            if remote_node_get_is_following(node, current_author, author, auth_required=True):
-                remote_followers.append(Follow(following=current_author, follower=author, approved=True))
-
-    followers = Follow.objects.filter(
-        following=current_author,
-        approved=True
-    ).select_related('follower')
-
-    all_followers = list(followers) + remote_followers
+    all_followers = get_all_followers(current_author)
 
     return render(request, "social_distribution/followers_list.html", {"followers": all_followers, "author": current_author})
 
@@ -380,7 +369,6 @@ def friends_list(request):
             isFollowing = remote_node_get_is_following(node, current_author, follow.following, auth_required=True)
             if isFollowing:
                 remote_friends.append(follow.following)
-                print("REMOTE FRIEND", follow.following.name)
     
     # of those, who also follows current_author back
     local_friends = Author.objects.filter(id__in=following_ids).filter(

@@ -70,6 +70,10 @@ def approve_follow(request, serial):
     current_author = get_current_author(request)
     follower_author = get_object_or_404(Author, serial=serial)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
+
+    # if the follow is remote, approving makes you friends
+    # ground truth is remote for follow status
+    # (when you recieve this the remote is already following you)
     if not follower_author.is_local:
         # flip the follow request like it came locally
         f = follow.follower

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 from ...models import Like, TextEntry, Author, Follow, Comment
 from ...serializers import (
-    AuthorSerializer, LikeSerializer, CommentSerializer, FollowSerializer,
+    AuthorSerializer, LikeSerializer, CommentSerializer, FollowSerializer, EntrySerializer
 )
 from ...utils import (
     NOT_DELETED, get_current_author, friends, can_view_entry,
@@ -17,7 +17,7 @@ from ...utils import (
     send_comment_to_inbox, send_comment_to_followers,
     send_follow_to_inbox,
     get_or_create_remote_author_from_fqid,
-    get_page_args, paginate_set, build_paginated_response,
+    get_page_args, paginate_set, build_paginated_response, get_all_followers
 )
 
 
@@ -259,7 +259,7 @@ def api_single_author_fqid(request, author_fqid):
 @api_view(['GET'])
 def api_author_followers(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
-    follows = Follow.objects.filter(following=author, approved=True).select_related('follower')
+    follows = get_all_followers(author)
     serializer = AuthorSerializer([f.follower for f in follows], many=True, context={'request': request})
     return Response({"type": "followers", "followers": serializer.data})
 
