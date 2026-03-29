@@ -42,7 +42,7 @@ def author_exists(username):
 
 
 def validate_create_author(username, node_host):
-    if not Author.objects.filter(username=username).exists():
+    if not Author.objects.filter(username=username, is_local=True).exists():
         author_uuid = uuid.uuid4()
         Author.objects.create(
             id=f"{node_host}/social_distribution/api/authors/{author_uuid}",
@@ -51,6 +51,8 @@ def validate_create_author(username, node_host):
             host=f"{node_host}/social_distribution/api/",
             web=f"{node_host}/social_distribution/authors/{username}",
             name=username,
+            is_local=True, 
+            is_approved=False, 
         )
 
         
