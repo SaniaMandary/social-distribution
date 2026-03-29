@@ -115,7 +115,7 @@ def upsert_remote_author(author_data):
         'serial': serial,
         'username': display_name or fallback_username,
         'host': _normalize_remote_host(author_id, author_data.get('host', '')),
-        'web': author_data.get('web', ''),
+        'web': author_data.get('web', '') or '',
         'is_local': False,
         'is_approved': True,
         'name': display_name or fallback_username,
