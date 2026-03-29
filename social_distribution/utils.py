@@ -30,11 +30,11 @@ def is_authenticated_request(request):
 # Author helper methods 
 
 def get_author_by_serial(username):
-    return Author.objects.get(username=username)
+    return Author.objects.get(username=username, is_local=True)
 
 
 def get_current_author(request):
-    return Author.objects.get(username=request.user.username)
+    return Author.objects.get(username=request.user.username, is_local=True)
 
 
 def author_exists(username):
