@@ -222,9 +222,9 @@ def api_authors(request):
     return Response(build_paginated_response("authors", "authors", serializer.data, page, size, total))
 
 @csrf_exempt
+@api_view(['GET', 'PUT'])
 @authentication_classes([])
 @permission_classes([])
-@api_view(['GET', 'PUT'])
 def api_single_author(request, author_serial):
     author = get_object_or_404(Author, serial=author_serial)
 
