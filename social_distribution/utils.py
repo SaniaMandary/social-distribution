@@ -104,6 +104,13 @@ def upsert_remote_author(author_data):
     author_id = (author_data or {}).get('id')
     if not author_id:
         return None
+    
+    author_id = author_id.rstrip('/')
+
+    existing = Author.objects.filter(id=author_id + '/').first()
+    if existing: 
+        existing.id = author_id
+        existing.save()
 
     display_name = (author_data.get('displayName') or '').strip()
     fallback_username = author_id.rstrip('/').split('/')[-1]
