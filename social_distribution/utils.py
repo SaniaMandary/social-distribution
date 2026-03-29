@@ -34,7 +34,11 @@ def get_author_by_serial(username):
 
 
 def get_current_author(request):
-    return Author.objects.get(username=request.user.username, is_local=True)
+    try:
+        return Author.objects.get(username=request.user.username, is_local=True)
+    except Author.DoesNotExist:
+        logger.error(f"No local Author found for user '{request.user.username}'")
+        raise
 
 
 def author_exists(username):
@@ -108,6 +112,13 @@ def upsert_remote_author(author_data):
         return None
     
     author_id = author_id.rstrip('/')
+
+     try:
+        existing = Author.objects.get(id=author_id)
+        if existing.is_local:
+            return existing
+    except Author.DoesNotExist:
+        pass
 
     display_name = (author_data.get('displayName') or '').strip()
     fallback_username = author_id.rstrip('/').split('/')[-1]
@@ -381,7 +392,7 @@ def remote_node_get_authors(node, auth_required=True):
     authors_actual = []
     for i in range(len(authors)):
         author = convert_remote_author_to_local(authors[i])
-        if author is not None:
+        if author is not None and not author.is_local:
             authors_actual.append(author)
     return authors_actual
 

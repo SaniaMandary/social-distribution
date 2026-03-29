@@ -30,7 +30,7 @@ def loginregister(request):
 
     if user is not None:
         validate_create_author(username, node_host)
-        author = Author.objects.get(username=username)
+        author = Author.objects.get(username=username, is_local=True)
         if not author.is_approved:
             return render(request, 'login.html', {'message': 'Your account is pending admin approval.'})
         login(request, user)

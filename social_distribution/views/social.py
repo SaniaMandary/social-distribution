@@ -29,7 +29,10 @@ def follow_author(request, username):
     if request.method != 'POST':
         return redirect("social_distribution:profile", username=username)
     current_author = get_current_author(request)
-    target_author = get_object_or_404(Author, username=username)
+    try:
+        target_author = Author.objects.get(usernmae=username, is_local=True)
+    except Author.DoesNotExist: 
+        target_author = get_object_or_404(Author, username=username)
 
     if current_author != target_author:
         follow, created = Follow.objects.get_or_create(

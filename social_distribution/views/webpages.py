@@ -105,7 +105,10 @@ def index(request):
 
 
 def profile_view(request, username):
-    author = get_object_or_404(Author, username=username)
+    try:
+        author = get_object_or_404(Author, username=username, is_local=True)
+    except Author.DoesNotExist:
+        author = get_object_or_404(Author, username=username)
 
     current_author = None
     if request.user.is_authenticated:
