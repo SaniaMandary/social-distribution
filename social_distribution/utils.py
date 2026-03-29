@@ -104,31 +104,43 @@ def upsert_remote_author(author_data):
     author_id = (author_data or {}).get('id')
     if not author_id:
         return None
-    
+
     author_id = author_id.rstrip('/')
 
-    existing = Author.objects.filter(id=author_id + '/').first()
-    if existing: 
-        existing.id = author_id
-        existing.save()
-
     display_name = (author_data.get('displayName') or '').strip()
-    fallback_username = author_id.rstrip('/').split('/')[-1]
-
-    # Seed the serial from the full FQID — globally unique, so no cross-node collisions.
+    fallback_username = author_id.split('/')[-1]
     serial = uuid.uuid5(uuid.NAMESPACE_URL, author_id)
+
+    # Check for existing with or without trailing slash
+    existing = Author.objects.filter(
+        Q(id=author_id) | Q(id=author_id + '/')
+    ).first()
+
+    if existing:
+        existing.id = author_id
+        existing.serial = serial
+        existing.username = display_name or fallback_username
+        existing.host = _normalize_remote_host(author_id, author_data.get('host', ''))
+        existing.web = author_data.get('web') or ''
+        existing.is_local = False
+        existing.is_approved = True
+        existing.name = display_name or fallback_username
+        existing.picture = author_data.get('profileImage') or ''
+        existing.github = author_data.get('github') or ''
+        existing.save()
+        return existing
 
     defaults = {
         'serial': serial,
         'username': display_name or fallback_username,
         'host': _normalize_remote_host(author_id, author_data.get('host', '')),
-        'web': author_data.get('web', '') or '',
+        'web': author_data.get('web') or '',
         'is_local': False,
         'is_approved': True,
         'name': display_name or fallback_username,
-        'description': 'remote author',
-        'picture': author_data.get('profileImage', '') or '',
-        'github': author_data.get('github', '') or '',
+        'description': author_data.get('description') or 'remote author',
+        'picture': author_data.get('profileImage') or '',
+        'github': author_data.get('github') or '',
     }
     author, _ = Author.objects.update_or_create(id=author_id, defaults=defaults)
     return author
