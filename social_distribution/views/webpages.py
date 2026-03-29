@@ -51,7 +51,7 @@ def index(request):
 
         # Fetch GitHub entries for followed authors to keep the local DB current.
         # Do not push these — the remote author's own node is responsible for that.
-        # fetch_github_entries(following_author, 1)
+        fetch_github_entries(following_author, 1)
 
         visibility_filter = Q(visibility="PUBLIC") | Q(visibility="UNLISTED")
         if friends(author, following_author):
@@ -70,18 +70,18 @@ def index(request):
     )
 
     # 4. Remote public entries from connected nodes
-    # remote_public_entries = []
-    # for node in nodes:
-    #     remote_authors = remote_node_get_authors(node, auth_required=False)
-    #     for remote_author in remote_authors:
-    #         r_entries = remote_node_get_entries(node, remote_author, auth_required=False)
-    #         remote_public_entries.extend(r_entries)
+    remote_public_entries = []
+    for node in nodes:
+        remote_authors = remote_node_get_authors(node, auth_required=False)
+        for remote_author in remote_authors:
+            r_entries = remote_node_get_entries(node, remote_author, auth_required=False)
+            remote_public_entries.extend(r_entries)
 
     # Merge all four sources into one deduplicated, sorted stream.
     # Key: remote_fqid for remote entries, "local:{pk}" for local entries.
     seen = set()
     stream = []
-    for entry in chain(own_entries, followed_entries, all_local_public):
+    for entry in chain(own_entries, followed_entries, all_local_public, remote_public_entries):
         key = entry.remote_fqid if entry.remote_fqid else f"local:{entry.pk}"
         if key in seen:
             continue
@@ -315,11 +315,11 @@ def author_list(request):
     current_author = get_current_author(request)
 
     # Refresh known remote authors from enabled nodes so users can follow them.
-    # for node in Node.objects.filter(is_enabled=True):
-    #     try:
-    #         remote_node_get_authors(node, auth_required=False)
-    #     except Exception:
-    #         continue
+    for node in Node.objects.filter(is_enabled=True):
+        try:
+            remote_node_get_authors(node, auth_required=False)
+        except Exception:
+            continue
 
     authors = Author.objects.exclude(serial=current_author.serial)
     
