@@ -113,7 +113,7 @@ def upsert_remote_author(author_data):
     
     author_id = author_id.rstrip('/')
 
-     try:
+    try:
         existing = Author.objects.get(id=author_id)
         if existing.is_local:
             return existing
