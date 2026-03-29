@@ -120,7 +120,7 @@ def upsert_remote_author(author_data):
         'is_approved': True,
         'name': display_name or fallback_username,
         'description': 'remote author',
-        'picture': author_data.get('profileImage', ''),
+        'picture': author_data.get('profileImage', '') or '',
         'github': author_data.get('github', ''),
     }
     author, _ = Author.objects.update_or_create(id=author_id, defaults=defaults)
