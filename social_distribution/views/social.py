@@ -73,21 +73,7 @@ def approve_follow(request, serial):
     current_author = get_current_author(request)
     follower_author = get_object_or_404(Author, serial=serial)
     follow = get_object_or_404(Follow, follower=follower_author, following=current_author)
-
-    # if the follow is remote, approving makes you friends
-    # ground truth is remote for follow status
-    # (when you recieve this the remote is already following you)
-    if not follower_author.is_local:
-        # flip the follow request like it came locally
-        f = follow.follower
-        follow.follower = follow.following
-        follow.following = f
     follow.approved = True
-
-    # delete any duplicate follows
-    if Follow.objects.filter(follower=follow.follower, following=follow.following, approved=True).exists():
-        Follow.objects.filter(follower=follow.follower, following=follow.following, approved=True).delete()
-
     follow.save()
     return redirect("social_distribution:follow_requests")
 
@@ -96,15 +82,13 @@ def approve_follow(request, serial):
 def reject_follow(request, serial):
     current_author = get_current_author(request)
     follower_author = get_object_or_404(Author, serial=serial)
-    followObject = Follow.objects.filter(
+    Follow.objects.filter(
         follower=follower_author,
         following=current_author,
         approved=False
-    )
-    
-    followObject.delete() # delete local follow request
+    ).delete()
     return redirect("social_distribution:follow_requests")
-
+    
 @login_required
 def unfollow(request, username):
     if request.method != 'POST':
