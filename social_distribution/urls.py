@@ -54,6 +54,7 @@ urlpatterns = [
     path("api/authors/<uuid:author_serial>/follow_requests/", views.api_follow_requests, name="api_follow_requests"),
 
     # Inbox API
+    path('api/authors/<uuid:author_serial>/inbox', views.api_inbox, name='api_inbox_no_slash'),
     path("api/authors/<uuid:author_serial>/inbox/", views.api_inbox, name="api_inbox"),
     
     # Authors entries, specific Author entry, specific Author entry image. 
