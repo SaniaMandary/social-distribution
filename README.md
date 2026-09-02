@@ -8,15 +8,15 @@ See [the web page](https://uofa-cmput404.github.io/general/project.html) for a d
 
 Make a distributed social network!
 
-Social Distribution
+**Social Distribution**
 
 A distributed social networking platform built with Django, where independent "nodes" (servers) communicate with each other over a REST API so users on different servers can follow, share posts, comment, and interact.
 
-Overview
+**Overview**
 
 Unlike a typical social media app that runs on a single server, this project implements inter-node communication: each node maintains its own database and user base, but nodes can talk to each other through a documented REST API to share posts, follow requests, likes, and comments across servers. The project includes two independently running nodes (db_node_a, db_node_b) to demonstrate and test this federation in practice.
 
-Features
+**Features**
 
 User authentication and profiles
 Create, edit, and delete posts (public, friends-only, or private visibility)
